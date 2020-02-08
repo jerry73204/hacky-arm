@@ -1,0 +1,10 @@
+[package]
+name = "hacky-armweb"
+version = "0.1.0"
+authors = ["jerry73204 <jerry73204@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rocket = "^0.4.2"
+hacky-arm-common = { path = "../common" }
+failure = "^0.1.6"
