@@ -1,0 +1,9 @@
+[package]
+name = "detection"
+version = "0.1.0"
+authors = ["yuanyuyuan <az6980522@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+hacky-arm-common = { path = "../common" }
+clap = "*"
