@@ -6,4 +6,5 @@ edition = "2018"
 
 [dependencies]
 hacky-arm-common = { path = "../common" }
-clap = "*"
+argh = "^0.1.3"
+failure = "^0.1.6"
