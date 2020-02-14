@@ -1,10 +1,12 @@
 mod config;
+mod message;
+mod realsense_provider;
 
-use crate::config::Config;
+use crate::{config::Config, realsense_provider::RealSenseProvider};
 use argh::FromArgs;
 use failure::Fallible;
-use std::path::PathBuf;
-use tokio::prelude::*;
+use std::{path::PathBuf, sync::Arc};
+use tokio::{prelude::*, sync::broadcast};
 
 #[derive(FromArgs, Debug, Clone)]
 /// An arm who learns the arm job.
@@ -23,7 +25,21 @@ async fn main() -> Fallible<()> {
     } = args;
 
     // load config file
-    let config = Config::open(config_path);
+    let config = Arc::new(Config::open(config_path)?);
+
+    let mut realsense_handle = RealSenseProvider::start(Arc::clone(&config), 2);
+
+    loop {
+        let msg = match realsense_handle.get_receiver().recv().await {
+            Ok(msg) => msg,
+            Err(broadcast::RecvError::Closed) => break,
+            Err(broadcast::RecvError::Lagged(_)) => continue,
+        };
+        todo!();
+    }
+
+    // wait for workers
+    realsense_handle.wait().await?;
 
     Ok(())
 }
