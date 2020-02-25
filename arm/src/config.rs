@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// The global configuration type.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub arm_device: PathBuf,
@@ -14,12 +15,14 @@ pub struct Config {
     pub visualizer: VisualizerConfig,
 }
 
+/// The RealSense configuration.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RealSenseConfig {
     pub depth_camera: DepthCameraConfig,
     pub video_camera: VideoCameraConfig,
 }
 
+/// The depth camera configuration on RealSense.
 #[derive(Debug, Clone, Deserialize)]
 pub struct DepthCameraConfig {
     pub width: usize,
@@ -29,6 +32,7 @@ pub struct DepthCameraConfig {
     pub format: Format,
 }
 
+/// The video camera configuration on RealSense.
 #[derive(Debug, Clone, Deserialize)]
 pub struct VideoCameraConfig {
     pub width: usize,
@@ -38,12 +42,14 @@ pub struct VideoCameraConfig {
     pub format: Format,
 }
 
+/// The visualizer configuration.
 #[derive(Debug, Clone, Deserialize)]
 pub struct VisualizerConfig {
     pub enabled: bool,
 }
 
 impl Config {
+    /// Loads and parses a configuration file.
     pub fn open<P>(path: P) -> Fallible<Self>
     where
         P: AsRef<Path>,
@@ -56,6 +62,7 @@ impl Config {
     }
 }
 
+// This is custom deserializer for Format type.
 // See https://serde.rs/field-attrs.html
 fn deserialize_format<'de, D>(deserializer: D) -> Result<Format, D::Error>
 where

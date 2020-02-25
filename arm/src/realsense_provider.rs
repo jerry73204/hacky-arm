@@ -10,12 +10,14 @@ use realsense_rust::{
 use std::{sync::Arc, time::Instant};
 use tokio::sync::{broadcast, oneshot};
 
+/// The type instantiates the RealSense provider.
 pub struct RealSenseProvider {
     config: Arc<Config>,
     msg_tx: broadcast::Sender<(Instant, Arc<RealSenseMessage>)>,
 }
 
 impl RealSenseProvider {
+    /// Starts the RealSense provider and returns a handle.
     pub fn start(config: Arc<Config>) -> RealSenseHandle {
         let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
@@ -135,6 +137,7 @@ pub struct RealSenseHandle {
     terminate_rx: oneshot::Receiver<Fallible<()>>,
 }
 
+/// The handle type that can communicate with RealSense provider.
 impl RealSenseHandle {
     pub fn get_receiver(&mut self) -> &mut broadcast::Receiver<(Instant, Arc<RealSenseMessage>)> {
         &mut self.msg_rx

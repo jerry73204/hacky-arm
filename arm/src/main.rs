@@ -2,6 +2,7 @@ mod config;
 mod message;
 mod realsense_provider;
 mod visualizer;
+mod processor;
 
 use crate::{config::Config, message::VisualizerMessage, realsense_provider::RealSenseProvider};
 use argh::FromArgs;

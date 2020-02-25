@@ -4,6 +4,7 @@ use log::info;
 use std::{sync::Arc, time::Instant};
 use tokio::sync::{broadcast, oneshot};
 
+/// The visualizer worker instance.
 #[derive(Debug)]
 pub struct Visualizer {
     config: Arc<Config>,
@@ -11,6 +12,7 @@ pub struct Visualizer {
 }
 
 impl Visualizer {
+    /// Starts visualizer and returns a handle.
     pub fn start(config: Arc<Config>) -> VisualizerHandle {
         let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
@@ -46,6 +48,7 @@ impl Visualizer {
     }
 }
 
+/// The handle type that can communicate with visualizer.
 #[derive(Debug)]
 pub struct VisualizerHandle {
     msg_tx: broadcast::Sender<(Instant, Arc<VisualizerMessage>)>,
