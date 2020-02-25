@@ -14,3 +14,7 @@ opencv = { version = "^0.29.0", features = ["opencv-4", "contrib"] }
 argh = "^0.1.3"
 dobot = { path = "../dobot-rust" }
 hacky-arm-common = { path = "../common" }
+realsense-rust = { path = "../realsense-rust" }
+image = "^0.23.0"
+log = "^0.4.8"
+futures = "^0.3.4"
