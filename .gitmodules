@@ -1,3 +1,6 @@
 [submodule "dobot-rust"]
 	path = dobot-rust
 	url = https://github.com/jerry73204/dobot-rust.git
+[submodule "realsense-rust"]
+	path = realsense-rust
+	url = https://github.com/jerry73204/realsense-rust.git
