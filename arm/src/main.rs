@@ -1,16 +1,18 @@
 mod config;
 mod message;
+mod object_detector;
 mod processor;
 mod realsense_provider;
 mod utils;
 mod visualizer;
 
-use crate::{config::Config, realsense_provider::RealSenseProvider};
+use crate::{
+    config::Config, object_detector::ObjectDetector, realsense_provider::RealSenseProvider,
+    visualizer::Visualizer,
+};
 use argh::FromArgs;
 use failure::Fallible;
 use std::{path::PathBuf, sync::Arc};
-use tokio::sync::broadcast;
-use visualizer::Visualizer;
 
 #[derive(FromArgs, Debug, Clone)]
 /// An arm who learns the arm job.
@@ -37,21 +39,19 @@ async fn main() -> Fallible<()> {
     let visualizer_handle = Visualizer::start(Arc::clone(&config));
 
     // start realsense provider
-    let mut realsense_handle =
+    let realsense_handle =
         RealSenseProvider::start(Arc::clone(&config), visualizer_handle.msg_tx.clone());
 
-    // main loop
-    loop {
-        // receive data from sensors
-        let _msg = match realsense_handle.msg_rx.recv().await {
-            Ok(msg) => msg,
-            Err(broadcast::RecvError::Closed) => break,
-            Err(broadcast::RecvError::Lagged(_)) => continue,
-        };
-    }
+    // start object detector
+    let detector_handle = ObjectDetector::start(
+        Arc::clone(&config),
+        realsense_handle.msg_rx,
+        visualizer_handle.msg_tx.clone(),
+    );
 
     // wait for workers
     realsense_handle.terminate_rx.await??;
+    detector_handle.terminate_rx.await??;
     visualizer_handle.terminate_rx.await??;
 
     Ok(())

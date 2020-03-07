@@ -18,5 +18,6 @@ realsense-rust = { path = "../realsense-rust" }
 image = "^0.23.0"
 log = "^0.4.8"
 futures = "^0.3.4"
-imageproc = { git = "https://github.com/jerry73204/imageproc.git" }
+imageproc = { git = "https://github.com/image-rs/imageproc.git" }
 pretty_env_logger = "^0.4.0"
+hacky-detection = { path = "../detection" }

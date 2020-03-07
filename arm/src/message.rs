@@ -15,4 +15,9 @@ pub enum VisualizerMessage {
         depth_frame: Arc<Frame<frame_marker::Depth>>,
         color_frame: Arc<Frame<frame_marker::Video>>,
     },
+    ObjectDetection,
 }
+
+/// Message type sent by object detector.
+#[derive(Debug, Clone)]
+pub struct DetectorMessage {}

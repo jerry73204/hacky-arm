@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, oneshot};
 
 /// The type instantiates the RealSense provider.
+#[derive(Debug)]
 pub struct RealSenseProvider {
     config: Arc<Config>,
     msg_tx: broadcast::Sender<Arc<RealSenseMessage>>,
@@ -152,6 +153,7 @@ impl RealSenseProvider {
     }
 }
 
+#[derive(Debug)]
 pub struct RealSenseHandle {
     pub msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
     pub terminate_rx: oneshot::Receiver<Fallible<()>>,

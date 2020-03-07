@@ -68,6 +68,9 @@ impl Visualizer {
                 } => {
                     self.update_realsense_data(Arc::clone(depth_frame), Arc::clone(color_frame))?;
                 }
+                VisualizerMessage::ObjectDetection => {
+                    // TODO
+                }
             }
 
             self.render()?;
