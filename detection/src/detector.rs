@@ -1,10 +1,10 @@
+use failure::Fallible;
 use hacky_arm_common::opencv::{
     core::{self, Point, RotatedRect, Size},
     imgproc,
     prelude::*,
     types::VectorOfMat,
 };
-use failure::Fallible;
 
 #[derive(Debug, Clone)]
 pub struct Obj {
@@ -39,7 +39,10 @@ impl Detector {
         // setup kernel matrix
         let kernel: Mat = imgproc::get_structuring_element(
             imgproc::MORPH_CROSS,
-            Size {width: self.kernel_size, height: self.kernel_size},
+            Size {
+                width: self.kernel_size,
+                height: self.kernel_size,
+            },
             Point::new(-1, -1),
         )?;
 
@@ -50,11 +53,7 @@ impl Detector {
         imgproc::cvt_color(&raw, &mut img, imgproc::COLOR_BGR2GRAY, 0)?;
 
         // - blurring
-        imgproc::median_blur(
-            &img.clone()?,
-            &mut img,
-            self.n_blurrings
-        )?;
+        imgproc::median_blur(&img.clone()?, &mut img, self.n_blurrings)?;
 
         // - thresholding
         imgproc::threshold(
@@ -62,7 +61,7 @@ impl Detector {
             &mut img,
             self.threshold,
             255.,
-            imgproc::THRESH_BINARY_INV
+            imgproc::THRESH_BINARY_INV,
         )?;
 
         // - dilation
@@ -73,7 +72,7 @@ impl Detector {
             Point::new(-1, -1),
             self.n_dilations,
             core::BORDER_CONSTANT,
-            imgproc::morphology_default_border_value()?
+            imgproc::morphology_default_border_value()?,
         )?;
 
         // - erosion
@@ -84,7 +83,7 @@ impl Detector {
             Point::new(-1, -1),
             self.n_erosions,
             core::BORDER_CONSTANT,
-            imgproc::morphology_default_border_value()?
+            imgproc::morphology_default_border_value()?,
         )?;
 
         // end of image processing
@@ -104,8 +103,8 @@ impl Detector {
             .into_iter()
             .map(|cnt| {
                 let rotated_rect: RotatedRect = imgproc::min_area_rect(&cnt)?;
-                let angle: f32 = rotated_rect.angle()?;
-                let point: Point = rotated_rect.center()?.to::<i32>().unwrap();
+                let angle: f32 = rotated_rect.angle();
+                let point: Point = rotated_rect.center().to::<i32>().unwrap();
                 let arc_len: f64 = imgproc::arc_length(&cnt, true)?;
 
                 // collect all valid detected objects

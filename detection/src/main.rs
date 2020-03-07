@@ -1,12 +1,7 @@
 use argh::FromArgs;
-use failure::Fallible;
 use detection::detector::Detector;
-use hacky_arm_common::opencv::{
-    core::Size,
-    highgui, imgcodecs, imgproc,
-    prelude::*,
-    types::VectorOfMat,
-};
+use failure::Fallible;
+use hacky_arm_common::opencv::{core::Size, highgui, imgcodecs, imgproc, prelude::*};
 
 #[derive(Debug, Clone, FromArgs)]
 /// The detection module for hacky-arm project.
@@ -19,7 +14,9 @@ struct Args {
 fn main() -> Fallible<()> {
     let args: Args = argh::from_env();
     let Args { file } = args;
-    let detector = Detector {..Default::default()};
+    let detector = Detector {
+        ..Default::default()
+    };
 
     // get raw image
     let mut raw: Mat = imgcodecs::imread(&file, imgcodecs::IMREAD_COLOR)?;
@@ -30,7 +27,7 @@ fn main() -> Fallible<()> {
         &mut raw,
         Size {
             width: 1280,
-            height: 720
+            height: 720,
         },
         0.,
         0.,
@@ -45,7 +42,9 @@ fn main() -> Fallible<()> {
     highgui::imshow(window_name, &raw)?;
     loop {
         let key = highgui::wait_key(10)?;
-        if key == 113 { break; }
+        if key == 113 {
+            break;
+        }
     }
 
     Ok(())
