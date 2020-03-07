@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 prost = "^0.6.1"
-opencv = {version = "^0.29", features = ["contrib"]}
+opencv = {version = "^0.31.0", features = ["contrib"]}
 
 [build-dependencies]
 prost-build = "^0.6.1"
