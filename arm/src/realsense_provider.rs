@@ -1,29 +1,38 @@
 use crate::{
     config::{Config, RealSenseConfig},
-    message::RealSenseMessage,
+    message::{RealSenseMessage, VisualizerMessage},
+    utils::RateMeter,
 };
 use failure::Fallible;
-use log::warn;
+use log::{info, warn};
 use realsense_rust::{
     config::Config as RsConfig, frame::marker as frame_marker, kind::StreamKind, pipeline::Pipeline,
 };
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 use tokio::sync::{broadcast, oneshot};
 
 /// The type instantiates the RealSense provider.
 pub struct RealSenseProvider {
     config: Arc<Config>,
-    msg_tx: broadcast::Sender<(Instant, Arc<RealSenseMessage>)>,
+    msg_tx: broadcast::Sender<Arc<RealSenseMessage>>,
+    viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
 }
 
 impl RealSenseProvider {
     /// Starts the RealSense provider and returns a handle.
-    pub fn start(config: Arc<Config>) -> RealSenseHandle {
+    pub fn start(
+        config: Arc<Config>,
+        viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+    ) -> RealSenseHandle {
         let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
 
         tokio::spawn(async {
-            let provider = Self { config, msg_tx };
+            let provider = Self {
+                config,
+                msg_tx,
+                viz_msg_tx,
+            };
             let result = provider.run().await;
             let _ = terminate_tx.send(result);
         });
@@ -66,6 +75,7 @@ impl RealSenseProvider {
                 )?;
             pipeline.start_async(Some(config)).await?
         };
+        let mut rate_meter = RateMeter::seconds();
 
         loop {
             // wait for data from device
@@ -78,25 +88,19 @@ impl RealSenseProvider {
 
                 for frame_result in frames.try_into_iter()? {
                     let frame_any = frame_result?;
-                    let frame_any = {
-                        let result = frame_any.try_extend_to::<frame_marker::Depth>()?;
-                        match result {
-                            Ok(depth_frame) => {
-                                depth_frame_opt = Some(depth_frame);
-                                continue;
-                            }
-                            Err(orig_frame) => orig_frame,
+                    let frame_any = match frame_any.try_extend_to::<frame_marker::Depth>()? {
+                        Ok(depth_frame) => {
+                            depth_frame_opt = Some(depth_frame);
+                            continue;
                         }
+                        Err(orig_frame) => orig_frame,
                     };
-                    let _frame_any = {
-                        let result = frame_any.try_extend_to::<frame_marker::Video>()?;
-                        match result {
-                            Ok(color_frame) => {
-                                color_frame_opt = Some(color_frame);
-                                continue;
-                            }
-                            Err(orig_frame) => orig_frame,
+                    let _frame_any = match frame_any.try_extend_to::<frame_marker::Video>()? {
+                        Ok(color_frame) => {
+                            color_frame_opt = Some(color_frame);
+                            continue;
                         }
+                        Err(orig_frame) => orig_frame,
                     };
                 }
 
@@ -114,8 +118,19 @@ impl RealSenseProvider {
                         continue;
                     }
                 };
-                (depth_frame, color_frame)
+                (Arc::new(depth_frame), Arc::new(color_frame))
             };
+
+            // send to visualizer
+            {
+                let msg = VisualizerMessage::RealSenseData {
+                    depth_frame: Arc::clone(&depth_frame),
+                    color_frame: Arc::clone(&color_frame),
+                };
+                if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {
+                    break;
+                }
+            }
 
             // broadcast message
             {
@@ -123,28 +138,21 @@ impl RealSenseProvider {
                     depth_frame,
                     color_frame,
                 };
-
-                if let Err(_) = self.msg_tx.send((Instant::now(), Arc::new(msg))) {
-                    warn!("unable to send message");
+                if let Err(_) = self.msg_tx.send(Arc::new(msg)) {
+                    break;
                 }
             }
+
+            if let Some(rate) = rate_meter.tick(1) {
+                info!("message rate {} fps", rate);
+            }
         }
+
+        Ok(())
     }
 }
 
 pub struct RealSenseHandle {
-    msg_rx: broadcast::Receiver<(Instant, Arc<RealSenseMessage>)>,
-    terminate_rx: oneshot::Receiver<Fallible<()>>,
-}
-
-/// The handle type that can communicate with RealSense provider.
-impl RealSenseHandle {
-    pub fn get_receiver(&mut self) -> &mut broadcast::Receiver<(Instant, Arc<RealSenseMessage>)> {
-        &mut self.msg_rx
-    }
-
-    pub async fn wait(self) -> Fallible<()> {
-        let result = self.terminate_rx.await?;
-        result
-    }
+    pub msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
+    pub terminate_rx: oneshot::Receiver<Fallible<()>>,
 }
