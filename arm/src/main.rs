@@ -12,7 +12,19 @@ use crate::{
 };
 use argh::FromArgs;
 use failure::Fallible;
-use std::{path::PathBuf, sync::Arc};
+use lazy_static::lazy_static;
+use log::info;
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
+
+lazy_static! {
+    static ref TERMINATE_FLAG: AtomicBool = AtomicBool::new(false);
+}
 
 #[derive(FromArgs, Debug, Clone)]
 /// An arm who learns the arm job.
@@ -25,6 +37,11 @@ struct Args {
 #[tokio::main]
 async fn main() -> Fallible<()> {
     pretty_env_logger::init();
+
+    ctrlc::set_handler(move || {
+        TERMINATE_FLAG.store(true, Ordering::SeqCst);
+        info!("interrupted by user");
+    })?;
 
     // parse arguments
     let args: Args = argh::from_env();
