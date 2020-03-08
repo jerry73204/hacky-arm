@@ -1,14 +1,14 @@
 use crate::{config::Config, message::VisualizerMessage, utils::RateMeter};
 use failure::Fallible;
-use image::{ConvertBuffer, DynamicImage, ImageBuffer, Luma};
+use image::DynamicImage;
 use log::info;
-use realsense_rust::frame::{marker as frame_marker, Frame};
+use realsense_rust::{frame::marker as frame_marker, prelude::*, Frame};
 use std::sync::Arc;
 use tokio::sync::{broadcast, oneshot};
 
 struct VisualizerCache {
     color_image: Option<DynamicImage>,
-    depth_image: Option<ImageBuffer<Luma<u8>, Vec<u8>>>,
+    depth_image: Option<DynamicImage>,
 }
 
 impl VisualizerCache {
@@ -89,8 +89,8 @@ impl Visualizer {
         depth_frame: Arc<Frame<frame_marker::Depth>>,
         color_frame: Arc<Frame<frame_marker::Video>>,
     ) -> Fallible<()> {
-        let color_image: DynamicImage = color_frame.color_image()?.into();
-        let depth_image: ImageBuffer<Luma<u8>, Vec<u8>> = depth_frame.depth_image()?.convert();
+        let color_image: DynamicImage = color_frame.image()?.into();
+        let depth_image: DynamicImage = depth_frame.image()?.into();
 
         self.cache.color_image = Some(color_image);
         self.cache.depth_image = Some(depth_image);
