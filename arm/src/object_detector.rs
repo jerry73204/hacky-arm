@@ -1,16 +1,20 @@
 use crate::{
-    config::Config,
+    config::{Config, ObjectDetectorConfig},
     message::{DetectorMessage, RealSenseMessage, VisualizerMessage},
-    utils::RateMeter,
+    utils::{HackyTryFrom, RateMeter},
 };
 use failure::Fallible;
-use log::{info, warn};
+use hacky_arm_common::opencv::prelude::*;
+use hacky_detection::Detector;
+use log::info;
+use realsense_rust::prelude::*;
 use std::sync::Arc;
 use tokio::sync::{broadcast, oneshot};
 
 #[derive(Debug)]
 pub struct ObjectDetector {
     config: Arc<Config>,
+    detector: Arc<Detector>,
     msg_tx: broadcast::Sender<Arc<DetectorMessage>>,
     realsense_msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
     viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
@@ -22,16 +26,52 @@ impl ObjectDetector {
         realsense_msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
         viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
     ) -> ObjectDetectorHandle {
+        let Config {
+            object_detector:
+                ObjectDetectorConfig {
+                    threshold,
+                    n_dilations,
+                    n_erosions,
+                    n_blurrings,
+                    kernel_size,
+                },
+            ..
+        } = *config;
+
         let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
 
-        tokio::spawn(async {
+        tokio::spawn(async move {
+            // init detector
+            let detector = {
+                let mut detector = Detector::default();
+                if let Some(threshold) = threshold {
+                    detector.threshold = threshold;
+                }
+                if let Some(n_dilations) = n_dilations {
+                    detector.n_dilations = n_dilations;
+                }
+                if let Some(n_erosions) = n_erosions {
+                    detector.n_erosions = n_erosions;
+                }
+                if let Some(n_blurrings) = n_blurrings {
+                    detector.n_blurrings = n_blurrings;
+                }
+                if let Some(kernel_size) = kernel_size {
+                    detector.kernel_size = kernel_size;
+                }
+                Arc::new(detector)
+            };
+
+            // start worker
             let provider = Self {
                 config,
+                detector,
                 msg_tx,
                 realsense_msg_rx,
                 viz_msg_tx,
             };
+
             let result = provider.run().await;
             let _ = terminate_tx.send(result);
         });
@@ -53,8 +93,26 @@ impl ObjectDetector {
                 Err(broadcast::RecvError::Lagged(_)) => continue,
                 Err(broadcast::RecvError::Closed) => break,
             };
+            let detector = Arc::clone(&self.detector);
 
-            // TODO: requires hacky-detection
+            // run detection
+            // the _blocking_ call is necessary since the detection may take long time
+            let objects = tokio::task::spawn_blocking(move || -> Fallible<_> {
+                let RealSenseMessage {
+                    color_frame,
+                    depth_frame,
+                } = &*input_msg;
+
+                let color_image = color_frame.image()?;
+                let depth_image = depth_frame.image()?;
+                // TODO: handle depth image
+
+                let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
+                let objects = detector.detect(&color_mat)?;
+
+                Ok(objects)
+            })
+            .await??;
 
             // send to visualizer
             {
@@ -66,7 +124,7 @@ impl ObjectDetector {
 
             // broadcast message
             {
-                let msg = DetectorMessage {};
+                let msg = DetectorMessage { objects };
                 if let Err(_) = self.msg_tx.send(Arc::new(msg)) {
                     break;
                 }

@@ -1,3 +1,4 @@
+use hacky_detection::Obj;
 use realsense_rust::frame::{marker as frame_marker, Frame};
 use std::sync::Arc;
 
@@ -20,4 +21,6 @@ pub enum VisualizerMessage {
 
 /// Message type sent by object detector.
 #[derive(Debug, Clone)]
-pub struct DetectorMessage {}
+pub struct DetectorMessage {
+    pub objects: Vec<Obj>,
+}

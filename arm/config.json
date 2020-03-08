@@ -14,7 +14,10 @@
             "format": "RGB8"
         }
     },
+    "object_detector": {
+        "n_workers": 4,
+    },
     "visualizer": {
         "enabled": true,
-    }
+    },
 }

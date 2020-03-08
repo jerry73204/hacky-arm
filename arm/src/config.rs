@@ -12,6 +12,7 @@ use std::{
 pub struct Config {
     pub arm_device: PathBuf,
     pub realsense: RealSenseConfig,
+    pub object_detector: ObjectDetectorConfig,
     pub visualizer: VisualizerConfig,
 }
 
@@ -40,6 +41,16 @@ pub struct VideoCameraConfig {
     pub fps: usize,
     #[serde(deserialize_with = "deserialize_format")]
     pub format: Format,
+}
+
+/// The RealSense configuration.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ObjectDetectorConfig {
+    pub threshold: Option<f64>,
+    pub n_dilations: Option<i32>,
+    pub n_erosions: Option<i32>,
+    pub n_blurrings: Option<i32>,
+    pub kernel_size: Option<i32>,
 }
 
 /// The visualizer configuration.
