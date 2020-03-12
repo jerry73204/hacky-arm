@@ -8,7 +8,7 @@ use hacky_arm_common::opencv::prelude::*;
 use hacky_detection::Detector;
 use log::info;
 use realsense_rust::prelude::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, oneshot};
 
 #[derive(Debug)]
@@ -97,7 +97,7 @@ impl ObjectDetector {
 
             // run detection
             // the _blocking_ call is necessary since the detection may take long time
-            let objects = tokio::task::spawn_blocking(move || -> Fallible<_> {
+            let (objects, image) = tokio::task::spawn_blocking(move || -> Fallible<_> {
                 let RealSenseMessage {
                     color_frame,
                     depth_frame,
@@ -107,16 +107,16 @@ impl ObjectDetector {
                 let depth_image = depth_frame.image()?;
                 // TODO: handle depth image
 
-                let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
-                let objects = detector.detect(&color_mat)?;
+                let mut color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
+                let objects = detector.detect(&mut color_mat)?;
 
-                Ok(objects)
+                Ok((objects, color_mat))
             })
             .await??;
 
             // send to visualizer
             {
-                let msg = VisualizerMessage::ObjectDetection;
+                let msg = VisualizerMessage::ObjectDetection(Mutex::new(image));
                 if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {
                     break;
                 }

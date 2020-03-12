@@ -38,10 +38,11 @@ struct Args {
 async fn main() -> Fallible<()> {
     pretty_env_logger::init();
 
-    ctrlc::set_handler(move || {
-        TERMINATE_FLAG.store(true, Ordering::SeqCst);
-        info!("interrupted by user");
-    })?;
+    // TODO
+    // ctrlc::set_handler(move || {
+    //     TERMINATE_FLAG.store(true, Ordering::SeqCst);
+    //     info!("interrupted by user");
+    // })?;
 
     // parse arguments
     let args: Args = argh::from_env();

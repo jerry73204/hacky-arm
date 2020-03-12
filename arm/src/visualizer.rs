@@ -1,21 +1,23 @@
 use crate::{config::Config, message::VisualizerMessage, utils::RateMeter};
 use failure::Fallible;
-use image::DynamicImage;
 use log::info;
-use realsense_rust::{frame::marker as frame_marker, prelude::*, Frame};
+use realsense_rust::{frame::marker as frame_marker, Frame};
 use std::sync::Arc;
 use tokio::sync::{broadcast, oneshot};
+use hacky_arm_common::opencv::{highgui, prelude::*};
 
 struct VisualizerCache {
-    color_image: Option<DynamicImage>,
-    depth_image: Option<DynamicImage>,
+    color_frame: Option<Arc<Frame<frame_marker::Video>>>,
+    depth_frame: Option<Arc<Frame<frame_marker::Depth>>>,
+    image: Option<Mat>,
 }
 
 impl VisualizerCache {
     pub fn new() -> Self {
         Self {
-            color_image: None,
-            depth_image: None,
+            color_frame: None,
+            depth_frame: None,
+            image: None,
         }
     }
 }
@@ -55,6 +57,8 @@ impl Visualizer {
 
         let mut rate_meter = RateMeter::seconds();
 
+        highgui::named_window("Detection", 0).unwrap();
+
         loop {
             let msg = match self.msg_rx.recv().await {
                 Ok(received) => received,
@@ -68,8 +72,11 @@ impl Visualizer {
                 } => {
                     self.update_realsense_data(Arc::clone(depth_frame), Arc::clone(color_frame))?;
                 }
-                VisualizerMessage::ObjectDetection => {
-                    // TODO
+                VisualizerMessage::ObjectDetection(mutex_image) => {
+                    let guard = mutex_image.lock().unwrap();
+                    let image_mat: &Mat = &*guard;
+                    let image: Mat = Mat::clone(image_mat)?;
+                    self.cache.image = Some(image);
                 }
             }
 
@@ -89,24 +96,33 @@ impl Visualizer {
         depth_frame: Arc<Frame<frame_marker::Depth>>,
         color_frame: Arc<Frame<frame_marker::Video>>,
     ) -> Fallible<()> {
-        let color_image: DynamicImage = color_frame.image()?.into();
-        let depth_image: DynamicImage = depth_frame.image()?.into();
-
-        self.cache.color_image = Some(color_image);
-        self.cache.depth_image = Some(depth_image);
+        self.cache.color_frame = Some(color_frame);
+        self.cache.depth_frame = Some(depth_frame);
+        // let () = color_frame;
 
         Ok(())
     }
 
     fn render(&self) -> Fallible<()> {
-        if let Some(color_image) = &self.cache.color_image {
-            // TODO
+        // if let Some(color_frame) = &self.cache.color_frame {
+        //     // TODO
+        //     let color_image = color_frame.image()?;
+        //     let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
+        //     highgui::imshow("Color", &color_mat).unwrap();
+        // }
+
+        // if let Some(depth_frame) = &self.cache.depth_frame {
+        //     // TODO
+        //     let depth_image = depth_frame.image()?;
+        //     let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
+        //     highgui::imshow("Depth", &depth_mat).unwrap();
+        // }
+
+        if let Some(image) = &self.cache.image {
+            highgui::imshow("Detection", image).unwrap();
         }
 
-        if let Some(depth_image) = &self.cache.depth_image {
-            // TODO
-        }
-
+        highgui::wait_key(30).unwrap();
         Ok(())
     }
 }

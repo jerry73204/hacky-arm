@@ -1,6 +1,6 @@
 use failure::Fallible;
 use hacky_arm_common::opencv::{
-    core::{self, Point, RotatedRect, Size},
+    core::{self, Point, Point2f, Scalar, RotatedRect, Size},
     imgproc,
     prelude::*,
     types::VectorOfMat,
@@ -35,7 +35,7 @@ impl Default for Detector {
 }
 
 impl Detector {
-    pub fn detect(&self, raw: &Mat) -> Fallible<Vec<Obj>> {
+    pub fn detect(&self, raw: &mut Mat) -> Fallible<Vec<Obj>> {
         // setup kernel matrix
         let kernel: Mat = imgproc::get_structuring_element(
             imgproc::MORPH_CROSS,
@@ -50,7 +50,7 @@ impl Detector {
         let mut img = Mat::default()?;
 
         // - grayscale transformation
-        imgproc::cvt_color(&raw, &mut img, imgproc::COLOR_BGR2GRAY, 0)?;
+        imgproc::cvt_color(raw, &mut img, imgproc::COLOR_BGR2GRAY, 0)?;
 
         // - blurring
         imgproc::median_blur(&img.clone()?, &mut img, self.n_blurrings)?;
@@ -98,29 +98,54 @@ impl Detector {
             Point::default(),
         )?;
 
-        let results = contours
-            .to_vec()
-            .into_iter()
-            .map(|cnt| {
-                let rotated_rect: RotatedRect = imgproc::min_area_rect(&cnt)?;
-                let angle: f32 = rotated_rect.angle();
-                let point: Point = rotated_rect.center().to::<i32>().unwrap();
-                let arc_len: f64 = imgproc::arc_length(&cnt, true)?;
+        let mut rotated_rects = vec![];
+        let mut objects = vec![];
 
-                // collect all valid detected objects
-                if arc_len < 100.0 || arc_len > 1500.0 {
-                    return Ok(None);
-                }
 
-                let obj = {
-                    let Point { x, y } = point;
-                    Obj { x, y, angle }
-                };
-                Ok(Some(obj))
-            })
-            .filter_map(|result| result.transpose())
-            .collect::<Fallible<Vec<_>>>()?;
+        for cnt in contours {
+            let rotated_rect: RotatedRect = imgproc::min_area_rect(&cnt)?;
+            let angle: f32 = rotated_rect.angle();
+            let point: Point = rotated_rect.center().to::<i32>().unwrap();
+            let arc_len: f64 = imgproc::arc_length(&cnt, true)?;
 
-        Ok(results)
+            // collect all valid detected objects
+            if arc_len < 100.0 || arc_len > 1500.0 {
+                continue;
+            }
+
+            let obj = {
+                let Point { x, y } = point;
+                Obj { x, y, angle }
+            };
+
+            rotated_rects.push(rotated_rect);
+            objects.push(obj);
+        }
+
+        for rect in rotated_rects.iter() {
+            let mut points = vec![Point2f::new(0., 0.); 4];
+            rect.points(points.as_mut())?;
+            for index in 0..4 {
+                let next_index = (index + 1) % 4;
+                // let lhs = &;
+                // let rhs = &;
+                imgproc::line(
+                    raw,
+                    points[index].to::<i32>().unwrap(),
+                    points[next_index].to::<i32>().unwrap(),
+                    Scalar::new(0., 255., 0., 0.),
+                    3,
+                    imgproc::LINE_8,
+                    0
+                )?;
+            }
+        }
+
+        Ok(objects)
     }
+
+
+   // pub fn plot_box(&self, img: &mut Mat, obj: Vec<Obj>) -> Fallible<Vec<Obj>> {
+
+   // }
 }
