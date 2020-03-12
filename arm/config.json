@@ -1,5 +1,5 @@
 {
-    "arm_device": "/dev/ttyUSB0",
+    "dobot_device": "/dev/ttyUSB0",
     "realsense": {
         "depth_camera": {
             "width": 640,

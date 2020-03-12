@@ -70,7 +70,8 @@ async fn main() -> Fallible<()> {
         detector_handle.msg_rx,
         visualizer_handle.msg_tx.clone(),
         visualizer_handle.control_rx,
-    );
+    )
+    .await?;
 
     // wait for workers
     realsense_handle.handle.await??;

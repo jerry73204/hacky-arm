@@ -10,7 +10,7 @@ use std::{
 /// The global configuration type.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
-    pub arm_device: PathBuf,
+    pub dobot_device: PathBuf,
     pub realsense: RealSenseConfig,
     pub object_detector: ObjectDetectorConfig,
     pub visualizer: VisualizerConfig,
