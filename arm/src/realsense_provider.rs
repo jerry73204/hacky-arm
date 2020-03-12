@@ -9,7 +9,7 @@ use realsense_rust::{
     config::Config as RsConfig, frame::marker as frame_marker, kind::StreamKind, pipeline::Pipeline,
 };
 use std::sync::Arc;
-use tokio::sync::{broadcast, oneshot};
+use tokio::{sync::broadcast, task::JoinHandle};
 
 /// The type instantiates the RealSense provider.
 #[derive(Debug)]
@@ -25,23 +25,19 @@ impl RealSenseProvider {
         config: Arc<Config>,
         viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
     ) -> RealSenseHandle {
-        let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
 
-        tokio::spawn(async {
+        let handle = tokio::spawn(async {
             let provider = Self {
                 config,
                 msg_tx,
                 viz_msg_tx,
             };
-            let result = provider.run().await;
-            let _ = terminate_tx.send(result);
+            provider.run().await?;
+            Ok(())
         });
 
-        RealSenseHandle {
-            msg_rx,
-            terminate_rx,
-        }
+        RealSenseHandle { msg_rx, handle }
     }
 
     async fn run(self) -> Fallible<()> {
@@ -156,5 +152,5 @@ impl RealSenseProvider {
 #[derive(Debug)]
 pub struct RealSenseHandle {
     pub msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
-    pub terminate_rx: oneshot::Receiver<Fallible<()>>,
+    pub handle: JoinHandle<Fallible<()>>,
 }

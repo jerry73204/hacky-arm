@@ -9,7 +9,7 @@ use hacky_detection::Detector;
 use log::info;
 use realsense_rust::prelude::*;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{broadcast, oneshot};
+use tokio::{sync::broadcast, task::JoinHandle};
 
 #[derive(Debug)]
 pub struct ObjectDetector {
@@ -38,10 +38,9 @@ impl ObjectDetector {
             ..
         } = *config;
 
-        let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
 
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             // init detector
             let detector = {
                 let mut detector = Detector::default();
@@ -72,14 +71,11 @@ impl ObjectDetector {
                 viz_msg_tx,
             };
 
-            let result = provider.run().await;
-            let _ = terminate_tx.send(result);
+            provider.run().await?;
+            Ok(())
         });
 
-        ObjectDetectorHandle {
-            msg_rx,
-            terminate_rx,
-        }
+        ObjectDetectorHandle { msg_rx, handle }
     }
 
     async fn run(mut self) -> Fallible<()> {
@@ -141,5 +137,5 @@ impl ObjectDetector {
 
 pub struct ObjectDetectorHandle {
     pub msg_rx: broadcast::Receiver<Arc<DetectorMessage>>,
-    pub terminate_rx: oneshot::Receiver<Fallible<()>>,
+    pub handle: JoinHandle<Fallible<()>>,
 }

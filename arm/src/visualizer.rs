@@ -1,10 +1,14 @@
-use crate::{config::Config, message::VisualizerMessage, utils::RateMeter};
+use crate::{
+    config::Config,
+    message::{ControlMessage, VisualizerMessage},
+    utils::RateMeter,
+};
 use failure::Fallible;
+use hacky_arm_common::opencv::{highgui, prelude::*};
 use log::info;
 use realsense_rust::{frame::marker as frame_marker, Frame};
 use std::sync::Arc;
-use tokio::sync::{broadcast, oneshot};
-use hacky_arm_common::opencv::{highgui, prelude::*};
+use tokio::{sync::broadcast, task::JoinHandle};
 
 struct VisualizerCache {
     color_frame: Option<Arc<Frame<frame_marker::Video>>>,
@@ -26,29 +30,32 @@ impl VisualizerCache {
 pub struct Visualizer {
     config: Arc<Config>,
     msg_rx: broadcast::Receiver<Arc<VisualizerMessage>>,
+    control_tx: broadcast::Sender<ControlMessage>,
     cache: VisualizerCache,
 }
 
 impl Visualizer {
     /// Starts visualizer and returns a handle.
     pub fn start(config: Arc<Config>) -> VisualizerHandle {
-        let (terminate_tx, terminate_rx) = oneshot::channel();
         let (msg_tx, msg_rx) = broadcast::channel(2);
+        let (control_tx, control_rx) = broadcast::channel(2);
         let cache = VisualizerCache::new();
 
-        tokio::spawn(async {
+        let handle = tokio::spawn(async {
             let visualizer = Self {
                 config,
                 msg_rx,
+                control_tx,
                 cache,
             };
-            let result = visualizer.run().await;
-            let _ = terminate_tx.send(result);
+            visualizer.run().await?;
+            Ok(())
         });
 
         VisualizerHandle {
             msg_tx,
-            terminate_rx,
+            control_rx,
+            handle,
         }
     }
 
@@ -57,7 +64,7 @@ impl Visualizer {
 
         let mut rate_meter = RateMeter::seconds();
 
-        highgui::named_window("Detection", 0).unwrap();
+        highgui::named_window("Detection", 0)?;
 
         loop {
             let msg = match self.msg_rx.recv().await {
@@ -119,10 +126,17 @@ impl Visualizer {
         // }
 
         if let Some(image) = &self.cache.image {
-            highgui::imshow("Detection", image).unwrap();
+            highgui::imshow("Detection", image)?;
         }
 
-        highgui::wait_key(30).unwrap();
+        let key = highgui::wait_key(30)?;
+        match key {
+            30 => {
+                self.control_tx.send(ControlMessage::Enter).unwrap();
+            }
+            _ => (),
+        }
+
         Ok(())
     }
 }
@@ -131,5 +145,6 @@ impl Visualizer {
 #[derive(Debug)]
 pub struct VisualizerHandle {
     pub msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
-    pub terminate_rx: oneshot::Receiver<Fallible<()>>,
+    pub control_rx: broadcast::Receiver<ControlMessage>,
+    pub handle: JoinHandle<Fallible<()>>,
 }

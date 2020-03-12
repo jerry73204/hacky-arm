@@ -1,7 +1,7 @@
+use hacky_arm_common::opencv::prelude::Mat;
 use hacky_detection::Obj;
 use realsense_rust::frame::{marker as frame_marker, Frame};
 use std::sync::{Arc, Mutex};
-use hacky_arm_common::opencv::prelude::Mat;
 
 /// Message type produced by RealSense provider.
 #[derive(Debug)]
@@ -24,4 +24,10 @@ pub enum VisualizerMessage {
 #[derive(Debug, Clone)]
 pub struct DetectorMessage {
     pub objects: Vec<Obj>,
+}
+
+/// Message type produced by RealSense provider.
+#[derive(Debug, Clone)]
+pub enum ControlMessage {
+    Enter,
 }

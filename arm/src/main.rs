@@ -1,4 +1,5 @@
 mod config;
+mod controller;
 mod message;
 mod object_detector;
 mod processor;
@@ -7,19 +8,15 @@ mod utils;
 mod visualizer;
 
 use crate::{
-    config::Config, object_detector::ObjectDetector, realsense_provider::RealSenseProvider,
-    visualizer::Visualizer,
+    config::Config, controller::Controller, object_detector::ObjectDetector,
+    realsense_provider::RealSenseProvider, visualizer::Visualizer,
 };
 use argh::FromArgs;
 use failure::Fallible;
 use lazy_static::lazy_static;
-use log::info;
 use std::{
     path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::{atomic::AtomicBool, Arc},
 };
 
 lazy_static! {
@@ -67,10 +64,18 @@ async fn main() -> Fallible<()> {
         visualizer_handle.msg_tx.clone(),
     );
 
+    // start controller
+    let detector_handle = Controller::start(
+        Arc::clone(&config),
+        detector_handle.msg_rx,
+        visualizer_handle.msg_tx.clone(),
+        visualizer_handle.control_rx,
+    );
+
     // wait for workers
-    realsense_handle.terminate_rx.await??;
-    detector_handle.terminate_rx.await??;
-    visualizer_handle.terminate_rx.await??;
+    realsense_handle.handle.await??;
+    detector_handle.handle.await??;
+    visualizer_handle.handle.await??;
 
     Ok(())
 }
