@@ -32,8 +32,10 @@ impl ObjectDetector {
                     threshold,
                     n_dilations,
                     n_erosions,
-                    n_blurrings,
                     kernel_size,
+                    n_objects,
+                    min_arc_length,
+                    max_arc_length,
                 },
             ..
         } = *config;
@@ -53,11 +55,17 @@ impl ObjectDetector {
                 if let Some(n_erosions) = n_erosions {
                     detector.n_erosions = n_erosions;
                 }
-                if let Some(n_blurrings) = n_blurrings {
-                    detector.n_blurrings = n_blurrings;
-                }
                 if let Some(kernel_size) = kernel_size {
                     detector.kernel_size = kernel_size;
+                }
+                if let Some(n_objects) = n_objects {
+                    detector.n_objects = n_objects;
+                }
+                if let Some(min_arc_length) = min_arc_length {
+                    detector.min_arc_length = min_arc_length;
+                }
+                if let Some(max_arc_length) = max_arc_length {
+                    detector.max_arc_length = max_arc_length;
                 }
                 Arc::new(detector)
             };

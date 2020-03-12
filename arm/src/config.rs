@@ -49,8 +49,10 @@ pub struct ObjectDetectorConfig {
     pub threshold: Option<f64>,
     pub n_dilations: Option<i32>,
     pub n_erosions: Option<i32>,
-    pub n_blurrings: Option<i32>,
     pub kernel_size: Option<i32>,
+    pub n_objects: Option<usize>,
+    pub min_arc_length: Option<f64>,
+    pub max_arc_length: Option<f64>,
 }
 
 /// The visualizer configuration.

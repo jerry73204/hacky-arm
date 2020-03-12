@@ -32,8 +32,8 @@ fn main() -> Fallible<()> {
         &raw.clone()?,
         &mut raw,
         Size {
-            width: 1280,
-            height: 720,
+            width: 640,
+            height: 480,
         },
         0.,
         0.,

@@ -18,8 +18,10 @@ pub struct Detector {
     pub threshold: f64,
     pub n_dilations: i32,
     pub n_erosions: i32,
-    pub n_blurrings: i32,
     pub kernel_size: i32,
+    pub n_objects: usize,
+    pub min_arc_length: f64,
+    pub max_arc_length: f64,
 }
 
 impl Default for Detector {
@@ -28,8 +30,10 @@ impl Default for Detector {
             threshold: 60.,
             n_dilations: 3,
             n_erosions: 3,
-            n_blurrings: 3,
             kernel_size: 3,
+            n_objects: 5,
+            min_arc_length: 100.,
+            max_arc_length: 1500.,
         }
     }
 }
@@ -53,7 +57,7 @@ impl Detector {
         imgproc::cvt_color(raw, &mut img, imgproc::COLOR_BGR2GRAY, 0)?;
 
         // - blurring
-        imgproc::median_blur(&img.clone()?, &mut img, self.n_blurrings)?;
+        imgproc::median_blur(&img.clone()?, &mut img, self.kernel_size)?;
 
         // - thresholding
         imgproc::threshold(
@@ -101,15 +105,17 @@ impl Detector {
         let mut rotated_rects = vec![];
         let mut objects = vec![];
 
+        let mut sorted_contours = contours.to_vec();
+        sorted_contours.sort_by_key(|cnt| (-1000.0 * imgproc::arc_length(&cnt, true).unwrap()) as i32);
 
-        for cnt in contours {
+        for cnt in sorted_contours.iter().take(self.n_objects) {
             let rotated_rect: RotatedRect = imgproc::min_area_rect(&cnt)?;
             let angle: f32 = rotated_rect.angle();
             let point: Point = rotated_rect.center().to::<i32>().unwrap();
             let arc_len: f64 = imgproc::arc_length(&cnt, true)?;
 
             // collect all valid detected objects
-            if arc_len < 100.0 || arc_len > 1500.0 {
+            if arc_len < self.min_arc_length || arc_len > self.max_arc_length {
                 continue;
             }
 
@@ -127,8 +133,6 @@ impl Detector {
             rect.points(points.as_mut())?;
             for index in 0..4 {
                 let next_index = (index + 1) % 4;
-                // let lhs = &;
-                // let rhs = &;
                 imgproc::line(
                     raw,
                     points[index].to::<i32>().unwrap(),
