@@ -106,10 +106,6 @@ impl Detector {
         )?;
         // end of image processing
 
-        use hacky_arm_common::opencv::highgui;
-        highgui::imshow("wtf", &img)?;
-        highgui::wait_key(1)?;
-
         // find contours
         let mut contours = VectorOfMat::new();
         imgproc::find_contours(
