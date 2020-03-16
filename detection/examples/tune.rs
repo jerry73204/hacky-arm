@@ -1,17 +1,15 @@
 use argh::FromArgs;
-use hacky_detection::detector::Detector;
 use failure::Fallible;
-use serde::Serialize;
 use hacky_arm_common::opencv::{
     core::{self, Point2f, RotatedRect, Scalar, Size},
-    highgui,
-    imgcodecs,
-    imgproc,
-    prelude::*
+    highgui, imgcodecs, imgproc,
+    prelude::*,
 };
+use hacky_detection::detector::Detector;
+use log::info;
+use serde::Serialize;
 use std::fs::File;
 use std::io::prelude::*;
-use log::info;
 
 #[derive(Debug, Clone, FromArgs)]
 /// The detection module for hacky-arm project.
@@ -41,7 +39,6 @@ fn main() -> Fallible<()> {
         ..Default::default()
     };
 
-
     let window_name = "Detection";
     highgui::named_window(window_name, 0)?;
 
@@ -59,13 +56,30 @@ fn main() -> Fallible<()> {
     };
 
     highgui::create_trackbar("threshold", window_name, &mut tunable.threshold, 255, None)?;
-    highgui::create_trackbar("n_dilations", window_name, &mut tunable.n_dilations, 20, None)?;
+    highgui::create_trackbar(
+        "n_dilations",
+        window_name,
+        &mut tunable.n_dilations,
+        20,
+        None,
+    )?;
     highgui::create_trackbar("n_erosions", window_name, &mut tunable.n_erosions, 20, None)?;
     // highgui::create_trackbar("kernel_size", window_name, &mut tunable.kernel_size, 20, None)?;
     highgui::create_trackbar("n_objects", window_name, &mut tunable.n_objects, 10, None)?;
-    highgui::create_trackbar("min_arc_length", window_name, &mut tunable.min_arc_length, 1000, None)?;
-    highgui::create_trackbar("max_arc_length", window_name, &mut tunable.max_arc_length, 3000, None)?;
-
+    highgui::create_trackbar(
+        "min_arc_length",
+        window_name,
+        &mut tunable.min_arc_length,
+        1000,
+        None,
+    )?;
+    highgui::create_trackbar(
+        "max_arc_length",
+        window_name,
+        &mut tunable.max_arc_length,
+        3000,
+        None,
+    )?;
 
     // resize the raw one
     imgproc::resize(
@@ -79,7 +93,6 @@ fn main() -> Fallible<()> {
         0.,
         imgproc::INTER_LINEAR,
     )?;
-
 
     // visualize the detection
     loop {

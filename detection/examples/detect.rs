@@ -1,13 +1,13 @@
 use argh::FromArgs;
-use hacky_detection::detector::Detector;
 use failure::Fallible;
 use hacky_arm_common::opencv::{
     core::{self, Point2f, RotatedRect, Scalar, Size},
-    highgui,
-    imgcodecs,
-    imgproc,
-    prelude::*
+    highgui, imgcodecs, imgproc,
+    prelude::*,
+    videoio::{VideoCapture, CAP_V4L},
 };
+use hacky_detection::detector::Detector;
+use std::os::unix::fs::FileTypeExt;
 
 #[derive(Debug, Clone, FromArgs)]
 /// The detection module for hacky-arm project.
@@ -24,13 +24,55 @@ fn main() -> Fallible<()> {
         ..Default::default()
     };
 
-    // get raw image
-    let mut raw: Mat = imgcodecs::imread(&file, imgcodecs::IMREAD_COLOR)?;
+    let file_type = std::fs::metadata(&file)?.file_type();
+    dbg!(&file_type);
+    if file_type.is_char_device() {
+        run_camera(file, detector)?;
+    } else if file_type.is_file() {
+        run_image(file, detector)?;
+    } else {
+        panic!("unsupported file type {:?}", file_type);
+    }
 
+    Ok(())
+}
+
+fn run_camera(path: String, detector: Detector) -> Fallible<()> {
+    let mut capture = VideoCapture::from_file(&path, CAP_V4L)?;
+
+    loop {
+        let image = {
+            let mut image = Mat::default()?;
+            capture.read(&mut image)?;
+            image
+        };
+        detect(image, &detector)?;
+        let key = highgui::wait_key(10)?;
+        if key == 113 {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_image(path: String, detector: Detector) -> Fallible<()> {
+    let image = imgcodecs::imread(&path, imgcodecs::IMREAD_COLOR)?;
+    detect(image, &detector)?;
+    loop {
+        let key = highgui::wait_key(10)?;
+        if key == 113 {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn detect(mut image: Mat, detector: &Detector) -> Fallible<()> {
     // resize the raw one
     imgproc::resize(
-        &raw.clone()?,
-        &mut raw,
+        &image.clone()?,
+        &mut image,
         Size {
             width: 640,
             height: 480,
@@ -40,19 +82,12 @@ fn main() -> Fallible<()> {
         imgproc::INTER_LINEAR,
     )?;
 
-    let objects = detector.detect(&mut raw)?;
+    let objects = detector.detect(&mut image)?;
     println!("\n\nResults: {:#?}", objects);
 
     // visualize the detection
     let window_name = "Detection";
     highgui::named_window(window_name, 0)?;
-    highgui::imshow(window_name, &raw)?;
-    loop {
-        let key = highgui::wait_key(10)?;
-        if key == 113 {
-            break;
-        }
-    }
-
+    highgui::imshow(window_name, &image)?;
     Ok(())
 }

@@ -1,6 +1,6 @@
 use failure::Fallible;
 use hacky_arm_common::opencv::{
-    core::{self, Point, Point2f, Scalar, RotatedRect, Size},
+    core::{self, Point, Point2f, RotatedRect, Scalar, Size},
     imgproc,
     prelude::*,
     types::{VectorOfMat, VectorOfi32},
@@ -32,7 +32,7 @@ pub struct Detector {
 impl Default for Detector {
     fn default() -> Self {
         Detector {
-            inversion: true,
+            inversion: false,
             blur_kernel: 41,
             n_dilations: 4,
             dilation_kernel: 3,
@@ -43,14 +43,13 @@ impl Default for Detector {
             max_arc_length: 1500.,
             roi: [0.8, 0.8],
             lower_bound: [0, 57, 95],
-            upper_bound: [26, 158, 255]
+            upper_bound: [26, 158, 255],
         }
     }
 }
 
 impl Detector {
     pub fn detect(&self, raw: &mut Mat) -> Fallible<Vec<Obj>> {
-
         // start of image processing
         let mut img = Mat::default()?;
 
@@ -107,6 +106,10 @@ impl Detector {
         )?;
         // end of image processing
 
+        use hacky_arm_common::opencv::highgui;
+        highgui::imshow("wtf", &img)?;
+        highgui::wait_key(1)?;
+
         // find contours
         let mut contours = VectorOfMat::new();
         imgproc::find_contours(
@@ -121,7 +124,8 @@ impl Detector {
         let mut objects = vec![];
 
         let mut sorted_contours = contours.to_vec();
-        sorted_contours.sort_by_key(|cnt| (-1000.0 * imgproc::arc_length(&cnt, true).unwrap()) as i32);
+        sorted_contours
+            .sort_by_key(|cnt| (-1000.0 * imgproc::arc_length(&cnt, true).unwrap()) as i32);
 
         for cnt in sorted_contours.iter().take(self.n_objects) {
             let rotated_rect: RotatedRect = imgproc::min_area_rect(&cnt)?;
@@ -135,8 +139,8 @@ impl Detector {
             }
 
             {
-                let Size {height, width} = raw.size()?;
-                let center_x  = width / 2;
+                let Size { height, width } = raw.size()?;
+                let center_x = width / 2;
                 let center_y = height / 2;
                 let shift_x = (width as f64 * self.roi[0] / 2.) as i32;
                 let shift_y = (height as f64 * self.roi[1] / 2.) as i32;
@@ -148,10 +152,9 @@ impl Detector {
                     (x, y)
                 };
 
-                if _point <  roi_point_1 || _point > roi_point_2 {
+                if _point < roi_point_1 || _point > roi_point_2 {
                     continue;
                 }
-
             }
 
             let obj = {
@@ -191,7 +194,7 @@ impl Detector {
                     Scalar::new(0., 255., 0., 0.),
                     3,
                     imgproc::LINE_8,
-                    0
+                    0,
                 )?;
             }
         }
@@ -199,8 +202,7 @@ impl Detector {
         Ok(objects)
     }
 
+    // pub fn plot_box(&self, img: &mut Mat, obj: Vec<Obj>) -> Fallible<Vec<Obj>> {
 
-   // pub fn plot_box(&self, img: &mut Mat, obj: Vec<Obj>) -> Fallible<Vec<Obj>> {
-
-   // }
+    // }
 }
