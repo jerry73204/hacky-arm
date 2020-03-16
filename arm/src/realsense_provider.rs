@@ -6,7 +6,7 @@ use crate::{
 use failure::Fallible;
 use log::{info, warn};
 use realsense_rust::{
-    config::Config as RsConfig, frame::marker as frame_marker, kind::StreamKind, pipeline::Pipeline,
+    frame::marker as frame_marker, Config as RsConfig, Format, Pipeline, StreamKind,
 };
 use std::sync::Arc;
 use tokio::{sync::broadcast, task::JoinHandle};
@@ -135,9 +135,7 @@ impl RealSenseProvider {
                     depth_frame,
                     color_frame,
                 };
-                if let Err(_) = self.msg_tx.send(Arc::new(msg)) {
-                    break;
-                }
+                let _ = self.msg_tx.send(Arc::new(msg));
             }
 
             if let Some(rate) = rate_meter.tick(1) {
@@ -145,6 +143,7 @@ impl RealSenseProvider {
             }
         }
 
+        info!("realsense provider finished");
         Ok(())
     }
 }

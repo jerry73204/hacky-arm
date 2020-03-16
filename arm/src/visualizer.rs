@@ -79,10 +79,8 @@ impl Visualizer {
                 } => {
                     self.update_realsense_data(Arc::clone(depth_frame), Arc::clone(color_frame))?;
                 }
-                VisualizerMessage::ObjectDetection(mutex_image) => {
-                    let guard = mutex_image.lock().unwrap();
-                    let image_mat: &Mat = &*guard;
-                    let image: Mat = Mat::clone(image_mat)?;
+                VisualizerMessage::ObjectDetection(bytes) => {
+                    let image = Mat::from_slice_2d(&bytes)?;
                     self.cache.image = Some(image);
                 }
             }
@@ -111,31 +109,32 @@ impl Visualizer {
     }
 
     fn render(&self) -> Fallible<()> {
-        // if let Some(color_frame) = &self.cache.color_frame {
-        //     // TODO
-        //     let color_image = color_frame.image()?;
-        //     let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
-        //     highgui::imshow("Color", &color_mat).unwrap();
-        // }
+        // highgui::named_window("Detection", 0)?;
 
-        // if let Some(depth_frame) = &self.cache.depth_frame {
-        //     // TODO
-        //     let depth_image = depth_frame.image()?;
-        //     let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
-        //     highgui::imshow("Depth", &depth_mat).unwrap();
-        // }
+        if let Some(color_frame) = &self.cache.color_frame {
+            let color_image = color_frame.image()?;
+            let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
+            // highgui::imshow("Color", &color_mat)?;
+        }
+
+        if let Some(depth_frame) = &self.cache.depth_frame {
+            let depth_image = depth_frame.image()?;
+            let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
+            // highgui::imshow("Depth", &depth_mat).unwrap();
+        }
 
         if let Some(image) = &self.cache.image {
-            highgui::imshow("Detection", image)?;
+            // imgcodecs::imwrite("/tmp/.jpg", &image, &VectorOfi32::new())?;
+            // highgui::imshow("Detection", image)?;
         }
 
-        let key = highgui::wait_key(30)?;
-        match key {
-            30 => {
-                self.control_tx.send(ControlMessage::Enter).unwrap();
-            }
-            _ => (),
-        }
+        // let key = highgui::wait_key(30)?;
+        // match key {
+        //     13 => {
+        //         self.control_tx.send(ControlMessage::Enter).unwrap();
+        //     }
+        //     _ => (),
+        // }
 
         Ok(())
     }

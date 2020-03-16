@@ -65,7 +65,7 @@ async fn main() -> Fallible<()> {
     );
 
     // start controller
-    let detector_handle = Controller::start(
+    let controller_handle = Controller::start(
         Arc::clone(&config),
         detector_handle.msg_rx,
         visualizer_handle.msg_tx.clone(),
@@ -74,8 +74,9 @@ async fn main() -> Fallible<()> {
     .await?;
 
     // wait for workers
-    realsense_handle.handle.await??;
     detector_handle.handle.await??;
+    controller_handle.handle.await??;
+    realsense_handle.handle.await??;
     visualizer_handle.handle.await??;
 
     Ok(())

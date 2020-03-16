@@ -1,7 +1,7 @@
-use hacky_arm_common::opencv::prelude::Mat;
+use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Obj;
 use realsense_rust::frame::{marker as frame_marker, Frame};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Message type produced by RealSense provider.
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub enum VisualizerMessage {
         depth_frame: Arc<Frame<frame_marker::Depth>>,
         color_frame: Arc<Frame<frame_marker::Video>>,
     },
-    ObjectDetection(Mutex<Mat>),
+    ObjectDetection(Vec<Vec<Vec3b>>),
 }
 
 /// Message type sent by object detector.

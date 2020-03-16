@@ -4,11 +4,11 @@ use crate::{
     utils::{HackyTryFrom, RateMeter},
 };
 use failure::Fallible;
-use hacky_arm_common::opencv::prelude::*;
+use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Detector;
 use log::info;
 use realsense_rust::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::{sync::broadcast, task::JoinHandle};
 
 #[derive(Debug)]
@@ -120,18 +120,14 @@ impl ObjectDetector {
 
             // send to visualizer
             {
-                let msg = VisualizerMessage::ObjectDetection(Mutex::new(image));
-                if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {
-                    break;
-                }
+                let msg = VisualizerMessage::ObjectDetection(image.to_vec_2d::<Vec3b>()?);
+                let _ = self.viz_msg_tx.send(Arc::new(msg));
             }
 
             // broadcast message
             {
                 let msg = DetectorMessage { objects };
-                if let Err(_) = self.msg_tx.send(Arc::new(msg)) {
-                    break;
-                }
+                let _ = self.msg_tx.send(Arc::new(msg));
             }
 
             if let Some(rate) = rate_meter.tick(1) {
@@ -139,6 +135,7 @@ impl ObjectDetector {
             }
         }
 
+        info!("object detector finished");
         Ok(())
     }
 }
