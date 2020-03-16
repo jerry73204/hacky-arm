@@ -105,6 +105,8 @@ impl ObjectDetector {
                 let RealSenseMessage {
                     color_frame,
                     depth_frame,
+                    points,
+                    texture_coordinates,
                 } = &*input_msg;
 
                 let color_image = color_frame.image()?;

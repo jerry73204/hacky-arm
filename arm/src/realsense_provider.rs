@@ -154,8 +154,8 @@ impl RealSenseProvider {
                 let msg = VisualizerMessage::RealSenseData {
                     depth_frame: depth_frame.clone(),
                     color_frame: color_frame.clone(),
-                    points,
-                    texture_coordinates,
+                    points: points.clone(),
+                    texture_coordinates: texture_coordinates.clone(),
                 };
                 if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {
                     break;
@@ -167,6 +167,8 @@ impl RealSenseProvider {
                 let msg = RealSenseMessage {
                     depth_frame,
                     color_frame,
+                    points,
+                    texture_coordinates,
                 };
                 let _ = self.msg_tx.send(Arc::new(msg));
             }
