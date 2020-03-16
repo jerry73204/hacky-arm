@@ -9,6 +9,8 @@ use std::sync::Arc;
 pub struct RealSenseMessage {
     pub depth_frame: Frame<frame_marker::Depth>,
     pub color_frame: Frame<frame_marker::Video>,
+    pub points: Vec<Point3<f32>>,
+    pub texture_coordinates: Vec<Point2<f32>>,
 }
 
 /// Message type received by visualizer.

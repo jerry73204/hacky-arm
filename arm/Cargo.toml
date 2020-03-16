@@ -22,5 +22,6 @@ pretty_env_logger = "^0.4.0"
 hacky-detection = { path = "../detection" }
 ctrlc = "^3.1.4"
 lazy_static = "^1.4.0"
-# iced = { git = "https://github.com/hecrj/iced.git", features = ["tokio"] }
-# iced_futures = { git = "https://github.com/hecrj/iced.git", path = "futures" }
+nalgebra = "^0.20.0"
+kiss3d = "^0.23.0"
+crossbeam = "^0.7.3"
