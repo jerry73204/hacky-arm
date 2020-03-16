@@ -3,18 +3,72 @@ use crate::{
     message::{ControlMessage, VisualizerMessage},
     utils::{HackyTryFrom, RateMeter},
 };
+use crossbeam::channel;
 use failure::Fallible;
 use hacky_arm_common::opencv::{highgui, imgcodecs, prelude::*, types::VectorOfi32};
 // use iced::{button, executor, Application, Button, Column, Command, Element, Settings, Text};
+use image::{DynamicImage, GenericImageView, Rgba};
+use kiss3d::{
+    light::Light,
+    window::{State, Window},
+};
 use log::info;
+use nalgebra::{Point2, Point3};
 use realsense_rust::{frame::marker as frame_marker, prelude::*, Frame};
 use std::sync::Arc;
 use tokio::{runtime::Runtime, sync::broadcast, task::JoinHandle};
 
+#[derive(Debug)]
+struct PcdVizState {
+    rx: channel::Receiver<Vec<(Point3<f32>, Point3<f32>)>>,
+    points: Option<Vec<(Point3<f32>, Point3<f32>)>>,
+}
+
+impl PcdVizState {
+    pub fn new(rx: channel::Receiver<Vec<(Point3<f32>, Point3<f32>)>>) -> Self {
+        let state = Self { rx, points: None };
+        state
+    }
+}
+
+impl State for PcdVizState {
+    fn step(&mut self, window: &mut Window) {
+        // try to receive recent points
+        if let Ok(points) = self.rx.try_recv() {
+            self.points = Some(points);
+        };
+
+        // draw axis
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(1.0, 0.0, 0.0),
+            &Point3::new(1.0, 0.0, 0.0),
+        );
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(0.0, 1.0, 0.0),
+            &Point3::new(0.0, 1.0, 0.0),
+        );
+        window.draw_line(
+            &Point3::origin(),
+            &Point3::new(0.0, 0.0, 1.0),
+            &Point3::new(0.0, 0.0, 1.0),
+        );
+
+        // draw points
+        if let Some(points) = &self.points {
+            for (position, color) in points.iter() {
+                window.draw_point(position, color);
+            }
+        }
+    }
+}
+
 struct VisualizerCache {
-    color_frame: Option<Arc<Frame<frame_marker::Video>>>,
-    depth_frame: Option<Arc<Frame<frame_marker::Depth>>>,
+    color_frame: Option<Frame<frame_marker::Video>>,
+    depth_frame: Option<Frame<frame_marker::Depth>>,
     image: Option<Mat>,
+    points: Option<Vec<(Point3<f32>, Point3<f32>)>>,
 }
 
 impl VisualizerCache {
@@ -23,6 +77,7 @@ impl VisualizerCache {
             color_frame: None,
             depth_frame: None,
             image: None,
+            points: None,
         }
     }
 }
@@ -32,6 +87,7 @@ pub struct Visualizer {
     config: Arc<Config>,
     msg_rx: broadcast::Receiver<Arc<VisualizerMessage>>,
     control_tx: broadcast::Sender<ControlMessage>,
+    pcd_tx: channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>,
     cache: VisualizerCache,
 }
 
@@ -43,10 +99,23 @@ impl Visualizer {
         let cache = VisualizerCache::new();
 
         let handle = tokio::spawn(async {
+            let pcd_tx = {
+                let (pcd_tx, pcd_rx) = channel::bounded(4);
+
+                std::thread::spawn(move || {
+                    let state = PcdVizState::new(pcd_rx);
+                    let mut window = Window::new("point cloud");
+                    window.set_light(Light::StickToCamera);
+                    window.render_loop(state);
+                });
+                pcd_tx
+            };
+
             let visualizer = Self {
                 config,
                 msg_rx,
                 control_tx,
+                pcd_tx,
                 cache,
             };
 
@@ -77,8 +146,15 @@ impl Visualizer {
                 VisualizerMessage::RealSenseData {
                     depth_frame,
                     color_frame,
+                    points,
+                    texture_coordinates,
                 } => {
-                    self.update_realsense_data(Arc::clone(depth_frame), Arc::clone(color_frame))?;
+                    self.update_realsense_data(
+                        depth_frame.clone(),
+                        color_frame.clone(),
+                        points.clone(),
+                        texture_coordinates.clone(),
+                    )?;
                 }
                 VisualizerMessage::ObjectDetection(bytes) => {
                     let image = Mat::from_slice_2d(&bytes)?;
@@ -99,12 +175,36 @@ impl Visualizer {
 
     fn update_realsense_data(
         &mut self,
-        depth_frame: Arc<Frame<frame_marker::Depth>>,
-        color_frame: Arc<Frame<frame_marker::Video>>,
+        depth_frame: Frame<frame_marker::Depth>,
+        color_frame: Frame<frame_marker::Video>,
+        points: Vec<Point3<f32>>,
+        texture_coordinates: Vec<Point2<f32>>,
     ) -> Fallible<()> {
+        let color_image: DynamicImage = color_frame.image()?.into();
+        let (width, height) = color_image.dimensions();
+
+        let colored_points = points
+            .into_iter()
+            .zip(texture_coordinates.into_iter())
+            .map(|(point, texture_coordinate)| {
+                let [x, y]: [_; 2] = texture_coordinate.coords.into();
+                let color = if x >= 0.0 && x < 1.0 && y >= 0.0 && y < 1.0 {
+                    let row = (y * height as f32) as u32;
+                    let col = (x * width as f32) as u32;
+                    let Rgba([r, g, b, _a]) = color_image.get_pixel(col, row);
+                    Point3::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0)
+                } else {
+                    Point3::new(0.1, 0.1, 0.1)
+                };
+
+                (point, color)
+            })
+            .collect::<Vec<_>>();
+
+        let _ = self.pcd_tx.send(colored_points);
+
         self.cache.color_frame = Some(color_frame);
         self.cache.depth_frame = Some(depth_frame);
-
         Ok(())
     }
 
@@ -124,7 +224,6 @@ impl Visualizer {
         }
 
         if let Some(image) = &self.cache.image {
-            // imgcodecs::imwrite("/tmp/.jpg", &image, &VectorOfi32::new())?;
             highgui::imshow("Detection", image)?;
         }
 

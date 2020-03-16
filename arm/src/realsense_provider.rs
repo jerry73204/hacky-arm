@@ -5,8 +5,10 @@ use crate::{
 };
 use failure::Fallible;
 use log::{info, warn};
+use nalgebra::{Point2, Point3};
 use realsense_rust::{
-    frame::marker as frame_marker, Config as RsConfig, Format, Pipeline, StreamKind,
+    frame::marker as frame_marker, processing_block::marker as processing_block_marker,
+    Config as RsConfig, Format, Pipeline, ProcessingBlock, StreamKind,
 };
 use std::sync::Arc;
 use tokio::{sync::broadcast, task::JoinHandle};
@@ -50,6 +52,9 @@ impl RealSenseProvider {
             ..
         } = &*self.config;
 
+        // pointcloud filter
+        let mut pointcloud = ProcessingBlock::<processing_block_marker::PointCloud>::create()?;
+
         // setup pipeline
         let mut pipeline = {
             let pipeline = Pipeline::new()?;
@@ -77,52 +82,80 @@ impl RealSenseProvider {
         loop {
             // wait for data from device
             let frames = pipeline.wait_async(None).await?;
+            let depth_frame = frames.depth_frame()?.unwrap();
+            let color_frame = frames.color_frame()?.unwrap();
 
             // extract depth and color frames
-            let (depth_frame, color_frame) = {
-                let mut depth_frame_opt = None;
-                let mut color_frame_opt = None;
+            // let (depth_frame, color_frame) = {
+            //     let mut depth_frame_opt = None;
+            //     let mut color_frame_opt = None;
 
-                for frame_result in frames.try_into_iter()? {
-                    let frame_any = frame_result?;
-                    let frame_any = match frame_any.try_extend_to::<frame_marker::Depth>()? {
-                        Ok(depth_frame) => {
-                            depth_frame_opt = Some(depth_frame);
-                            continue;
-                        }
-                        Err(orig_frame) => orig_frame,
-                    };
-                    let _frame_any = match frame_any.try_extend_to::<frame_marker::Video>()? {
-                        Ok(color_frame) => {
-                            color_frame_opt = Some(color_frame);
-                            continue;
-                        }
-                        Err(orig_frame) => orig_frame,
-                    };
-                }
+            //     for frame_result in frames.try_into_iter()? {
+            //         let frame_any = frame_result?;
+            //         let frame_any = match frame_any.try_extend_to::<frame_marker::Depth>()? {
+            //             Ok(depth_frame) => {
+            //                 depth_frame_opt = Some(depth_frame);
+            //                 continue;
+            //             }
+            //             Err(orig_frame) => orig_frame,
+            //         };
+            //         let _frame_any = match frame_any.try_extend_to::<frame_marker::Video>()? {
+            //             Ok(color_frame) => {
+            //                 color_frame_opt = Some(color_frame);
+            //                 continue;
+            //             }
+            //             Err(orig_frame) => orig_frame,
+            //         };
+            //     }
 
-                let depth_frame = match depth_frame_opt {
-                    Some(frame) => frame,
-                    None => {
-                        warn!("missing depth frame");
-                        continue;
-                    }
-                };
-                let color_frame = match color_frame_opt {
-                    Some(frame) => frame,
-                    None => {
-                        warn!("missing color frame");
-                        continue;
-                    }
-                };
-                (Arc::new(depth_frame), Arc::new(color_frame))
-            };
+            //     let depth_frame = match depth_frame_opt {
+            //         Some(frame) => frame,
+            //         None => {
+            //             warn!("missing depth frame");
+            //             continue;
+            //         }
+            //     };
+            //     let color_frame = match color_frame_opt {
+            //         Some(frame) => frame,
+            //         None => {
+            //             warn!("missing color frame");
+            //             continue;
+            //         }
+            //     };
+            //     (Arc::new(depth_frame), Arc::new(color_frame))
+            // };
+
+            // compute point cloud
+            pointcloud.map_to(color_frame.clone())?;
+            let points_frame = pointcloud.calculate(depth_frame.clone())?;
+            let points = points_frame
+                .vertices()?
+                .iter()
+                .map(|vertex| {
+                    let [x, y, z] = vertex.xyz;
+                    Point3::new(x, y, z)
+                })
+                .collect::<Vec<_>>();
+            let texture_coordinates = points_frame
+                .texture_coordinates()?
+                .iter()
+                .map(|vertex| {
+                    let [i, j] = vertex.ij;
+                    assert_eq!(std::mem::size_of::<f32>(), std::mem::size_of_val(&i));
+                    assert_eq!(std::mem::size_of::<f32>(), std::mem::size_of_val(&j));
+                    let x: f32 = unsafe { std::mem::transmute(i) };
+                    let y: f32 = unsafe { std::mem::transmute(j) };
+                    Point2::new(x, y)
+                })
+                .collect::<Vec<_>>();
 
             // send to visualizer
             {
                 let msg = VisualizerMessage::RealSenseData {
-                    depth_frame: Arc::clone(&depth_frame),
-                    color_frame: Arc::clone(&color_frame),
+                    depth_frame: depth_frame.clone(),
+                    color_frame: color_frame.clone(),
+                    points,
+                    texture_coordinates,
                 };
                 if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {
                     break;
