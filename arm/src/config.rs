@@ -12,6 +12,7 @@ use std::{
 pub struct Config {
     pub dobot_device: PathBuf,
     pub realsense: RealSenseConfig,
+    #[serde(deserialize_with = "deserialize_object_detector")]
     pub object_detector: ObjectDetectorConfig,
     pub visualizer: VisualizerConfig,
 }
@@ -41,6 +42,12 @@ pub struct VideoCameraConfig {
     pub fps: usize,
     #[serde(deserialize_with = "deserialize_format")]
     pub format: Format,
+}
+
+/// The RealSense configuration.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ObjectDetectorOrigConfig {
+    pub params_file: Option<PathBuf>,
 }
 
 /// The RealSense configuration.
@@ -91,4 +98,50 @@ where
         _ => return Err(D::Error::custom(format!("unsupported format {:?}", text))),
     };
     Ok(format)
+}
+
+fn deserialize_object_detector<'de, D>(deserializer: D) -> Result<ObjectDetectorConfig, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let ObjectDetectorOrigConfig { params_file } =
+        ObjectDetectorOrigConfig::deserialize(deserializer)?;
+
+    let config = match params_file {
+        Some(path) => {
+            let config: ObjectDetectorConfig = {
+                let load_params = || {
+                    let mut reader = BufReader::new(File::open(path)?);
+                    let mut string = String::new();
+                    reader.read_to_string(&mut string)?;
+                    std::io::Result::Ok(string)
+                };
+
+                let string = load_params().map_err(|err| {
+                    D::Error::custom(format!(
+                        "failed to load object detector parameter file: {:?}",
+                        err
+                    ))
+                })?;
+                json5::from_str(&string).map_err(|err| {
+                    D::Error::custom(format!(
+                        "invalid object detector paramter file format: {:?}",
+                        err
+                    ))
+                })?
+            };
+            config
+        }
+        None => ObjectDetectorConfig {
+            threshold: None,
+            n_dilations: None,
+            n_erosions: None,
+            kernel_size: None,
+            n_objects: None,
+            min_arc_length: None,
+            max_arc_length: None,
+        },
+    };
+
+    Ok(config)
 }

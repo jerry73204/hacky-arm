@@ -15,7 +15,7 @@
         }
     },
     "object_detector": {
-        "n_workers": 4,
+        "params_file": "params.json",
     },
     "visualizer": {
         "enabled": true,
