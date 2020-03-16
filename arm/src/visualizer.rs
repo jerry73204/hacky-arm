@@ -1,14 +1,15 @@
 use crate::{
     config::Config,
     message::{ControlMessage, VisualizerMessage},
-    utils::RateMeter,
+    utils::{HackyTryFrom, RateMeter},
 };
 use failure::Fallible;
-use hacky_arm_common::opencv::{highgui, prelude::*};
+use hacky_arm_common::opencv::{highgui, imgcodecs, prelude::*, types::VectorOfi32};
+// use iced::{button, executor, Application, Button, Column, Command, Element, Settings, Text};
 use log::info;
-use realsense_rust::{frame::marker as frame_marker, Frame};
+use realsense_rust::{frame::marker as frame_marker, prelude::*, Frame};
 use std::sync::Arc;
-use tokio::{sync::broadcast, task::JoinHandle};
+use tokio::{runtime::Runtime, sync::broadcast, task::JoinHandle};
 
 struct VisualizerCache {
     color_frame: Option<Arc<Frame<frame_marker::Video>>>,
@@ -48,8 +49,9 @@ impl Visualizer {
                 control_tx,
                 cache,
             };
-            visualizer.run().await?;
-            Ok(())
+
+            tokio::task::spawn_blocking(|| visualizer.run()).await??;
+            Fallible::Ok(())
         });
 
         VisualizerHandle {
@@ -59,15 +61,14 @@ impl Visualizer {
         }
     }
 
-    async fn run(mut self) -> Fallible<()> {
+    fn run(mut self) -> Fallible<()> {
         info!("visualizer started");
 
+        let mut runtime = Runtime::new()?;
         let mut rate_meter = RateMeter::seconds();
 
-        highgui::named_window("Detection", 0)?;
-
         loop {
-            let msg = match self.msg_rx.recv().await {
+            let msg = match runtime.block_on(self.msg_rx.recv()) {
                 Ok(received) => received,
                 Err(broadcast::RecvError::Closed) => break,
                 Err(broadcast::RecvError::Lagged(_)) => continue,
@@ -103,38 +104,37 @@ impl Visualizer {
     ) -> Fallible<()> {
         self.cache.color_frame = Some(color_frame);
         self.cache.depth_frame = Some(depth_frame);
-        // let () = color_frame;
 
         Ok(())
     }
 
     fn render(&self) -> Fallible<()> {
-        // highgui::named_window("Detection", 0)?;
+        highgui::named_window("Detection", 0)?;
 
         if let Some(color_frame) = &self.cache.color_frame {
             let color_image = color_frame.image()?;
             let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
-            // highgui::imshow("Color", &color_mat)?;
+            highgui::imshow("Color", &color_mat)?;
         }
 
         if let Some(depth_frame) = &self.cache.depth_frame {
             let depth_image = depth_frame.image()?;
             let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
-            // highgui::imshow("Depth", &depth_mat).unwrap();
+            highgui::imshow("Depth", &depth_mat).unwrap();
         }
 
         if let Some(image) = &self.cache.image {
             // imgcodecs::imwrite("/tmp/.jpg", &image, &VectorOfi32::new())?;
-            // highgui::imshow("Detection", image)?;
+            highgui::imshow("Detection", image)?;
         }
 
-        // let key = highgui::wait_key(30)?;
-        // match key {
-        //     13 => {
-        //         self.control_tx.send(ControlMessage::Enter).unwrap();
-        //     }
-        //     _ => (),
-        // }
+        let key = highgui::wait_key(1)?;
+        match key {
+            13 => {
+                self.control_tx.send(ControlMessage::Enter).unwrap();
+            }
+            _ => (),
+        }
 
         Ok(())
     }
