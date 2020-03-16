@@ -53,13 +53,18 @@ pub struct ObjectDetectorOrigConfig {
 /// The RealSense configuration.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ObjectDetectorConfig {
-    pub threshold: Option<f64>,
+    pub inversion: Option<bool>,
+    pub blur_kernel: Option<i32>,
     pub n_dilations: Option<i32>,
+    pub dilation_kernel: Option<i32>,
     pub n_erosions: Option<i32>,
-    pub kernel_size: Option<i32>,
+    pub erosion_kernel: Option<i32>,
     pub n_objects: Option<usize>,
     pub min_arc_length: Option<f64>,
     pub max_arc_length: Option<f64>,
+    pub roi: Option<[f64; 2]>,
+    pub lower_bound: Option<[i32; 3]>,
+    pub upper_bound: Option<[i32; 3]>,
 }
 
 /// The visualizer configuration.
@@ -133,13 +138,18 @@ where
             config
         }
         None => ObjectDetectorConfig {
-            threshold: None,
+            inversion: None,
+            blur_kernel: None,
             n_dilations: None,
+            dilation_kernel: None,
             n_erosions: None,
-            kernel_size: None,
+            erosion_kernel: None,
             n_objects: None,
             min_arc_length: None,
             max_arc_length: None,
+            roi: None,
+            lower_bound: None,
+            upper_bound: None,
         },
     };
 

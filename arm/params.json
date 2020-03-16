@@ -1,1 +1,25 @@
-{}
+{
+    "inversion": true,
+    "blur_kernel": 41,
+    "n_dilations": 4,
+    "dilation_kernel": 3,
+    "n_erosions": 2,
+    "erosion_kernel": 3,
+    "n_objects": 10,
+    "min_arc_length": 94,
+    "max_arc_length": 1500,
+    "roi": [
+        0.28,
+        0.64
+    ],
+    "lower_bound": [
+        0,
+        57,
+        95
+    ],
+    "upper_bound": [
+        26,
+        158,
+        255
+    ]
+}
