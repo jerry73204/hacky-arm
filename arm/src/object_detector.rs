@@ -29,13 +29,18 @@ impl ObjectDetector {
         let Config {
             object_detector:
                 ObjectDetectorConfig {
-                    threshold,
+                    inversion,
+                    blur_kernel,
                     n_dilations,
+                    dilation_kernel,
                     n_erosions,
-                    kernel_size,
+                    erosion_kernel,
                     n_objects,
                     min_arc_length,
                     max_arc_length,
+                    roi,
+                    lower_bound,
+                    upper_bound,
                 },
             ..
         } = *config;
@@ -46,17 +51,23 @@ impl ObjectDetector {
             // init detector
             let detector = {
                 let mut detector = Detector::default();
-                if let Some(threshold) = threshold {
-                    detector.threshold = threshold;
+                if let Some(inversion) = inversion {
+                    detector.inversion = inversion;
+                }
+                if let Some(blur_kernel) = blur_kernel {
+                    detector.blur_kernel = blur_kernel;
                 }
                 if let Some(n_dilations) = n_dilations {
                     detector.n_dilations = n_dilations;
                 }
+                if let Some(dilation_kernel) = dilation_kernel {
+                    detector.dilation_kernel = dilation_kernel;
+                }
                 if let Some(n_erosions) = n_erosions {
                     detector.n_erosions = n_erosions;
                 }
-                if let Some(kernel_size) = kernel_size {
-                    detector.kernel_size = kernel_size;
+                if let Some(erosion_kernel) = erosion_kernel {
+                    detector.erosion_kernel = erosion_kernel;
                 }
                 if let Some(n_objects) = n_objects {
                     detector.n_objects = n_objects;
@@ -66,6 +77,15 @@ impl ObjectDetector {
                 }
                 if let Some(max_arc_length) = max_arc_length {
                     detector.max_arc_length = max_arc_length;
+                }
+                if let Some(roi) = roi {
+                    detector.roi = roi;
+                }
+                if let Some(lower_bound) = lower_bound {
+                    detector.lower_bound = lower_bound;
+                }
+                if let Some(upper_bound) = upper_bound {
+                    detector.upper_bound = upper_bound;
                 }
                 Arc::new(detector)
             };
