@@ -50,6 +50,8 @@ impl Default for Detector {
 
 impl Detector {
     pub fn detect(&self, raw: &mut Mat) -> Fallible<Vec<Obj>> {
+        let to_odd = |value: i32| value.max(3) | 1;
+
         // start of image processing
         let mut img = Mat::default()?;
 
@@ -60,7 +62,7 @@ impl Detector {
         core::in_range(&img.clone()?, &lower_bound, &upper_bound, &mut img)?;
 
         // - blurring
-        imgproc::median_blur(&img.clone()?, &mut img, self.blur_kernel)?;
+        imgproc::median_blur(&img.clone()?, &mut img, to_odd(self.blur_kernel))?;
 
         // - inversion
         if self.inversion {
@@ -71,8 +73,8 @@ impl Detector {
         let dilation_kernel: Mat = imgproc::get_structuring_element(
             imgproc::MORPH_CROSS,
             Size {
-                width: self.dilation_kernel,
-                height: self.dilation_kernel,
+                width: to_odd(self.dilation_kernel),
+                height: to_odd(self.dilation_kernel),
             },
             Point::new(-1, -1),
         )?;
@@ -90,8 +92,8 @@ impl Detector {
         let erosion_kernel: Mat = imgproc::get_structuring_element(
             imgproc::MORPH_CROSS,
             Size {
-                width: self.erosion_kernel,
-                height: self.erosion_kernel,
+                width: to_odd(self.erosion_kernel),
+                height: to_odd(self.erosion_kernel),
             },
             Point::new(-1, -1),
         )?;
@@ -153,6 +155,37 @@ impl Detector {
                 }
             }
 
+            let mut points = vec![Point2f::new(0., 0.); 4];
+            rotated_rect.points(points.as_mut())?;
+
+            let compute_norm = |lhs: &Point2f, rhs: &Point2f| {
+                let Point2f { x: xl, y: yl } = lhs;
+                let Point2f { x: xr, y: yr } = rhs;
+                (xl - xr).powi(2) + (yl - yr).powi(2)
+            };
+            let norm_left_top = compute_norm(&points[0], &points[1]);
+            let norm_left_bottom = compute_norm(&points[1], &points[2]);
+
+            let angle = if norm_left_top > norm_left_bottom {
+                -angle
+            } else {
+                -angle - 90.0
+            };
+
+            // display rectangle
+            for index in 0..4 {
+                let next_index = (index + 1) % 4;
+                imgproc::line(
+                    raw,
+                    points[index].to::<i32>().unwrap(),
+                    points[next_index].to::<i32>().unwrap(),
+                    Scalar::new(0., 255., 0., 0.),
+                    3,
+                    imgproc::LINE_8,
+                    0,
+                )?;
+            }
+
             let obj = {
                 let Point { x, y } = point;
                 Obj { x, y, angle }
@@ -175,24 +208,6 @@ impl Detector {
                 imgproc::LINE_8,
                 false,
             )?;
-        }
-
-        // display rectangle
-        for rect in rotated_rects.iter() {
-            let mut points = vec![Point2f::new(0., 0.); 4];
-            rect.points(points.as_mut())?;
-            for index in 0..4 {
-                let next_index = (index + 1) % 4;
-                imgproc::line(
-                    raw,
-                    points[index].to::<i32>().unwrap(),
-                    points[next_index].to::<i32>().unwrap(),
-                    Scalar::new(0., 255., 0., 0.),
-                    3,
-                    imgproc::LINE_8,
-                    0,
-                )?;
-            }
         }
 
         Ok(objects)
