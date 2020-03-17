@@ -1,25 +1,25 @@
 {
     "inversion": true,
-    "blur_kernel": 41,
-    "n_dilations": 4,
+    "blur_kernel": 16,
+    "n_dilations": 2,
     "dilation_kernel": 3,
-    "n_erosions": 2,
+    "n_erosions": 3,
     "erosion_kernel": 3,
-    "n_objects": 10,
-    "min_arc_length": 94,
+    "n_objects": 5,
+    "min_arc_length": 100,
     "max_arc_length": 1500,
     "roi": [
-        0.28,
-        0.64
+        1.0,
+        1.0
     ],
     "lower_bound": [
         0,
-        57,
-        95
+        0,
+        35
     ],
     "upper_bound": [
-        26,
-        158,
+        250,
+        130,
         255
     ]
 }

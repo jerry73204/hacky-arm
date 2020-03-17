@@ -2,20 +2,20 @@
     "dobot_device": "/dev/ttyUSB0",
     "realsense": {
         "depth_camera": {
-            "width": 640,
+            "width": 1280,
             "height": 0,
             "fps": 30,
             "format": "Z16"
         },
         "video_camera": {
-            "width": 640,
+            "width": 1280,
             "height": 0,
             "fps": 30,
             "format": "RGB8"
         }
     },
     "object_detector": {
-        "params_file": "params.json",
+        "params_file": "params/black.json",
     },
     "visualizer": {
         "enabled": true,
