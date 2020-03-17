@@ -2,7 +2,10 @@ use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Obj;
 use nalgebra::{Point2, Point3};
 use realsense_rust::frame::{marker as frame_marker, Frame};
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 /// Message type produced by RealSense provider.
 #[derive(Debug)]
@@ -29,10 +32,21 @@ pub enum VisualizerMessage {
 #[derive(Debug, Clone)]
 pub struct DetectorMessage {
     pub objects: Vec<Obj>,
+    pub timestamp: Instant,
 }
 
 /// Message type produced by RealSense provider.
 #[derive(Debug, Clone)]
 pub enum ControlMessage {
     Enter,
+    Home,
+    ToggleAutoGrab,
+}
+
+/// Message type produced by RealSense provider.
+#[derive(Debug, Clone)]
+pub enum DobotMessage {
+    GrabObject(Obj),
+    SetHome,
+    Noop(Duration),
 }

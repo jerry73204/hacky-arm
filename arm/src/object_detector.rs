@@ -8,7 +8,7 @@ use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Detector;
 use log::info;
 use realsense_rust::prelude::*;
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 use tokio::{sync::broadcast, task::JoinHandle};
 
 #[derive(Debug)]
@@ -148,7 +148,10 @@ impl ObjectDetector {
 
             // broadcast message
             {
-                let msg = DetectorMessage { objects };
+                let msg = DetectorMessage {
+                    objects,
+                    timestamp: Instant::now(),
+                };
                 let _ = self.msg_tx.send(Arc::new(msg));
             }
 

@@ -230,7 +230,18 @@ impl Visualizer {
         let key = highgui::wait_key(1)?;
         match key {
             13 => {
+                // enter
                 self.control_tx.send(ControlMessage::Enter).unwrap();
+            }
+            104 => {
+                // h
+                self.control_tx.send(ControlMessage::Home).unwrap();
+            }
+            97 => {
+                // a
+                self.control_tx
+                    .send(ControlMessage::ToggleAutoGrab)
+                    .unwrap();
             }
             _ => (),
         }
