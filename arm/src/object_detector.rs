@@ -7,6 +7,7 @@ use failure::Fallible;
 use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Detector;
 use log::info;
+use nalgebra::Point2;
 use realsense_rust::prelude::*;
 use std::{sync::Arc, time::Instant};
 use tokio::{sync::broadcast, task::JoinHandle};
@@ -129,12 +130,35 @@ impl ObjectDetector {
                     texture_coordinates,
                 } = &*input_msg;
 
+                // detect objects
                 let color_image = color_frame.image()?;
                 let depth_image = depth_frame.image()?;
-                // TODO: handle depth image
+                // let (width, height) = color_image.dimensions();
+                let width = color_frame.width()?;
+                let height = color_frame.height()?;
 
                 let mut color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
                 let objects = detector.detect(&mut color_mat)?;
+
+                // compute 3D to 2D point correspondences
+                let correspondences = points
+                    .iter()
+                    .zip(texture_coordinates.iter())
+                    .filter_map(|(point3d, texture_coordinate)| {
+                        let [x, y]: [_; 2] = texture_coordinate.coords.into();
+                        if x >= 0.0 && x < 1.0 && y >= 0.0 && y < 1.0 {
+                            let row = (y * height as f32) as u32;
+                            let col = (x * width as f32) as u32;
+                            let point2d = Point2::new(col, row);
+                            Some((point3d, point2d))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                // compute objects and points correspondences
+                // TODO
 
                 Ok((objects, color_mat))
             })
