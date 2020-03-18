@@ -5,7 +5,12 @@ use crate::{
 };
 use crossbeam::channel;
 use failure::Fallible;
-use hacky_arm_common::opencv::{highgui, imgcodecs, prelude::*, types::VectorOfi32};
+use hacky_arm_common::opencv::{
+    core::{Point, Scalar},
+    highgui, imgcodecs, imgproc,
+    prelude::*,
+    types::VectorOfi32,
+};
 use image::{DynamicImage, GenericImageView, Rgba};
 use kiss3d::{
     light::Light,
@@ -160,7 +165,18 @@ impl Visualizer {
                     )?;
                 }
                 VisualizerMessage::ObjectDetection(bytes) => {
-                    let image = Mat::from_slice_2d(&bytes)?;
+                    let mut image = Mat::from_slice_2d(&bytes)?;
+                    imgproc::put_text(
+                        &mut image,
+                        "物件偵測",
+                        Point::new(0, 0),
+                        imgproc::FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        Scalar::new(0., 255., 0., 0.),
+                        1,
+                        imgproc::LINE_8,
+                        false,
+                    )?;
                     self.cache.image = Some(image);
                 }
             }
