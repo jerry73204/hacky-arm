@@ -66,7 +66,7 @@ impl State for PcdVizState {
         // draw points
         if let Some(points) = &self.points {
             for (position, color) in points.iter() {
-                window.draw_point(&(rot * position), &(rot * color));
+                window.draw_point(&(rot * position), color);
             }
         }
     }
