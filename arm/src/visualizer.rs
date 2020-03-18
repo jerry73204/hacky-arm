@@ -6,14 +6,14 @@ use crate::{
 use crossbeam::channel;
 use failure::Fallible;
 use hacky_arm_common::opencv::{highgui, imgcodecs, prelude::*, types::VectorOfi32};
-// use iced::{button, executor, Application, Button, Column, Command, Element, Settings, Text};
 use image::{DynamicImage, GenericImageView, Rgba};
 use kiss3d::{
     light::Light,
     window::{State, Window},
 };
 use log::info;
-use nalgebra::{Point2, Point3};
+use nalgebra::{Point2, Point3, Vector3, Rotation3};
+use std::f32;
 use realsense_rust::{frame::marker as frame_marker, prelude::*, Frame};
 use std::sync::Arc;
 use tokio::{runtime::Runtime, sync::broadcast, task::JoinHandle};
@@ -55,10 +55,13 @@ impl State for PcdVizState {
             &Point3::new(0.0, 0.0, 1.0),
         );
 
+        let axisangle = Vector3::z() * f32::consts::PI;
+        let rot = Rotation3::new(axisangle);
+
         // draw points
         if let Some(points) = &self.points {
             for (position, color) in points.iter() {
-                window.draw_point(position, color);
+                window.draw_point(&(rot * position), &(rot * color));
             }
         }
     }
