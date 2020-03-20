@@ -51,22 +51,22 @@ async fn main() -> Fallible<()> {
     let config = Arc::new(Config::open(config_path)?);
 
     // start visaulizer
-    let visualizer_handle = Visualizer::start(Arc::clone(&config));
+    let visualizer_handle = Visualizer::start(config.clone());
 
     // start realsense provider
     let realsense_handle =
-        RealSenseProvider::start(Arc::clone(&config), visualizer_handle.msg_tx.clone());
+        RealSenseProvider::start(config.clone(), visualizer_handle.msg_tx.clone());
 
     // start object detector
     let detector_handle = ObjectDetector::start(
-        Arc::clone(&config),
+        config.clone(),
         realsense_handle.msg_rx,
         visualizer_handle.msg_tx.clone(),
     );
 
     // start controller
     let controller_handle = Controller::start(
-        Arc::clone(&config),
+        config.clone(),
         detector_handle.msg_rx,
         visualizer_handle.msg_tx.clone(),
         visualizer_handle.control_rx,
@@ -74,10 +74,18 @@ async fn main() -> Fallible<()> {
     .await?;
 
     // wait for workers
-    detector_handle.handle.await??;
-    controller_handle.handle.await??;
-    realsense_handle.handle.await??;
-    visualizer_handle.handle.await??;
+    {
+        let detector_wait = detector_handle.handle;
+        let controller_wait = controller_handle.handle;
+        let realsense_wait = realsense_handle.handle;
+        let visualizer_wait = visualizer_handle.handle;
 
+        futures::try_join!(
+            async move { Fallible::Ok(detector_wait.await??) },
+            async move { Fallible::Ok(controller_wait.await??) },
+            async move { Fallible::Ok(realsense_wait.await??) },
+            async move { Fallible::Ok(visualizer_wait.await??) },
+        )?;
+    }
     Ok(())
 }

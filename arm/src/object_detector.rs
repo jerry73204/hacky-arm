@@ -118,7 +118,7 @@ impl ObjectDetector {
                 Err(broadcast::RecvError::Lagged(_)) => continue,
                 Err(broadcast::RecvError::Closed) => break,
             };
-            let detector = Arc::clone(&self.detector);
+            let detector = self.detector.clone();
 
             // run detection
             // the _blocking_ call is necessary since the detection may take long time
@@ -158,8 +158,6 @@ impl ObjectDetector {
                     .collect::<Vec<_>>();
 
                 // compute objects and points correspondences
-                // TODO
-
                 Ok((objects, color_mat))
             })
             .await??;

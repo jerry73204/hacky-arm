@@ -7,6 +7,7 @@ use failure::Fallible;
 use hacky_detection::Obj;
 use log::{info, warn};
 use std::{
+    future::Future,
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -40,7 +41,7 @@ impl Controller {
         viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
         control_rx: broadcast::Receiver<ControlMessage>,
     ) -> Fallible<ControllerHandle> {
-        let handle = tokio::spawn(async move {
+        let spawn_handle = tokio::spawn(async move {
             let cache = ControllerCache { detector_msg: None };
             let controller = Controller {
                 config,
@@ -53,8 +54,9 @@ impl Controller {
             controller.run().await?;
             Ok(())
         });
-
-        let handle = ControllerHandle { handle };
+        let handle = ControllerHandle {
+            handle: spawn_handle,
+        };
         Ok(handle)
     }
 
@@ -172,7 +174,15 @@ impl Controller {
                             let (x, y, angle) = {
                                 let Obj { x, y, angle } = obj;
                                 let pos_x = (-y + 563) * (275 - 220) / (-345 + 563) + 220;
+                                // let pos_x = (-y as f32 + 563.0) * (275.0 - 220.0)
+                                //     / (-345.0 + 563.0)
+                                //     + 220.0
+                                //     + 5.0;
                                 let pos_y = (-x + 765) * (50 - 0) / (-572 + 765) + 0;
+                                // let pos_y = (-x + 765) * (50 - 0) / (-572 + 765) + 0 - 10;
+                                // let pos_y = (-x as f32 + 765.0) * (50.0 - 0.0) / (-572.0 + 765.0)
+                                //     + 0.0
+                                //     + 10.0;
                                 (pos_x as f32, pos_y as f32, angle)
                             };
 
@@ -235,8 +245,8 @@ impl Controller {
         &self,
         dobot_tx: broadcast::Sender<(DobotMessage, Instant)>,
     ) -> Fallible<()> {
-        let enable_auto_grab = Arc::clone(&self.enable_auto_grab);
-        let cache_mutex = Arc::clone(&self.cache);
+        let enable_auto_grab = self.enable_auto_grab.clone();
+        let cache_mutex = self.cache.clone();
 
         tokio::spawn(async move {
             loop {

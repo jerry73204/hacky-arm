@@ -17,9 +17,9 @@ use kiss3d::{
     window::{State, Window},
 };
 use log::info;
-use nalgebra::{Point2, Point3, Vector3, Rotation3};
-use std::f32;
+use nalgebra::{Point2, Point3, Rotation3, Vector3};
 use realsense_rust::{frame::marker as frame_marker, prelude::*, Frame};
+use std::f32;
 use std::sync::Arc;
 use tokio::{runtime::Runtime, sync::broadcast, task::JoinHandle};
 
@@ -168,12 +168,12 @@ impl Visualizer {
                     let mut image = Mat::from_slice_2d(&bytes)?;
                     imgproc::put_text(
                         &mut image,
-                        "物件偵測",
-                        Point::new(0, 0),
+                        "Object Detection Demo",
+                        Point::new(5, 45),
                         imgproc::FONT_HERSHEY_SIMPLEX,
-                        0.5,
+                        2.0,
                         Scalar::new(0., 255., 0., 0.),
-                        1,
+                        2,
                         imgproc::LINE_8,
                         false,
                     )?;
