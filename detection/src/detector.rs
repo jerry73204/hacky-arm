@@ -1,9 +1,10 @@
 use failure::Fallible;
+use geo::{Coordinate, LineString};
 use hacky_arm_common::opencv::{
     core::{self, Point, Point2f, RotatedRect, Scalar, Size},
     imgproc,
     prelude::*,
-    types::{VectorOfMat, VectorOfi32},
+    types::{VectorOfVectorOfPoint, VectorOfi32},
 };
 
 #[derive(Debug, Clone)]
@@ -11,6 +12,7 @@ pub struct Obj {
     pub x: i32,
     pub y: i32,
     pub angle: f32,
+    pub polygon: LineString<i32>,
 }
 
 #[derive(Debug)]
@@ -109,23 +111,37 @@ impl Detector {
         // end of image processing
 
         // find contours
-        let mut contours = VectorOfMat::new();
-        imgproc::find_contours(
-            &img,
-            &mut contours,
-            imgproc::RETR_EXTERNAL,
-            imgproc::CHAIN_APPROX_SIMPLE,
-            Point::default(),
-        )?;
+        let contours = {
+            let mut contours = VectorOfVectorOfPoint::new();
+            imgproc::find_contours(
+                &img,
+                &mut contours,
+                imgproc::RETR_EXTERNAL,
+                imgproc::CHAIN_APPROX_SIMPLE,
+                Point::default(),
+            )?;
+
+            let mut sorted_contours = contours.to_vec();
+            sorted_contours.sort_by_cached_key(|cnt| {
+                (-1000.0 * imgproc::arc_length(&cnt, true).unwrap()) as i32
+            });
+            sorted_contours
+        };
 
         let mut rotated_rects = vec![];
         let mut objects = vec![];
 
-        let mut sorted_contours = contours.to_vec();
-        sorted_contours
-            .sort_by_key(|cnt| (-1000.0 * imgproc::arc_length(&cnt, true).unwrap()) as i32);
+        for cnt in contours.iter().take(self.n_objects) {
+            let polygon: LineString<_> = cnt
+                .iter()
+                .map(|point| {
+                    let Point { x, y } = point;
+                    Coordinate { x, y }
+                })
+                .collect::<Vec<_>>()
+                .into();
 
-        for cnt in sorted_contours.iter().take(self.n_objects) {
+            // compute rotated rectangle
             let rotated_rect: RotatedRect = imgproc::min_area_rect(&cnt)?;
             let angle: f32 = rotated_rect.angle();
             let point: Point = rotated_rect.center().to::<i32>().unwrap();
@@ -136,6 +152,7 @@ impl Detector {
                 continue;
             }
 
+            // reject objects out of roi
             {
                 let Size { height, width } = raw.size()?;
                 let center_x = width / 2;
@@ -155,6 +172,7 @@ impl Detector {
                 }
             }
 
+            // compute rotation angle
             let mut points = vec![Point2f::new(0., 0.); 4];
             rotated_rect.points(points.as_mut())?;
 
@@ -188,7 +206,12 @@ impl Detector {
 
             let obj = {
                 let Point { x, y } = point;
-                Obj { x, y, angle }
+                Obj {
+                    x,
+                    y,
+                    angle,
+                    polygon,
+                }
             };
 
             rotated_rects.push(rotated_rect);
@@ -212,8 +235,4 @@ impl Detector {
 
         Ok(objects)
     }
-
-    // pub fn plot_box(&self, img: &mut Mat, obj: Vec<Obj>) -> Fallible<Vec<Obj>> {
-
-    // }
 }
