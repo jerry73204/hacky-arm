@@ -25,12 +25,12 @@ use tokio::{runtime::Runtime, sync::broadcast, task::JoinHandle};
 
 #[derive(Debug)]
 struct PcdVizState {
-    rx: channel::Receiver<Vec<(Point3<f32>, Point3<f32>)>>,
-    points: Option<Vec<(Point3<f32>, Point3<f32>)>>,
+    rx: channel::Receiver<Vec<(Arc<Point3<f32>>, Point3<f32>)>>,
+    points: Option<Vec<(Arc<Point3<f32>>, Point3<f32>)>>,
 }
 
 impl PcdVizState {
-    pub fn new(rx: channel::Receiver<Vec<(Point3<f32>, Point3<f32>)>>) -> Self {
+    pub fn new(rx: channel::Receiver<Vec<(Arc<Point3<f32>>, Point3<f32>)>>) -> Self {
         let state = Self { rx, points: None };
         state
     }
@@ -66,7 +66,7 @@ impl State for PcdVizState {
         // draw points
         if let Some(points) = &self.points {
             for (position, color) in points.iter() {
-                window.draw_point(&(rot * position), color);
+                window.draw_point(&(rot * (**position)), color);
             }
         }
     }
@@ -95,7 +95,7 @@ pub struct Visualizer {
     config: Arc<Config>,
     msg_rx: broadcast::Receiver<Arc<VisualizerMessage>>,
     control_tx: broadcast::Sender<ControlMessage>,
-    pcd_tx: channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>,
+    pcd_tx: channel::Sender<Vec<(Arc<Point3<f32>>, Point3<f32>)>>,
     cache: VisualizerCache,
 }
 
@@ -160,12 +160,12 @@ impl Visualizer {
                     self.update_realsense_data(
                         depth_frame.clone(),
                         color_frame.clone(),
-                        points.clone(),
+                        Arc::clone(&points),
                         texture_coordinates.clone(),
                     )?;
                 }
-                VisualizerMessage::ObjectDetection(bytes) => {
-                    let mut image = Mat::from_slice_2d(&bytes)?;
+                VisualizerMessage::ObjectDetection(detection) => {
+                    let mut image = Mat::from_slice_2d(&detection.image)?;
                     imgproc::put_text(
                         &mut image,
                         "Object Detection Demo",
@@ -196,14 +196,15 @@ impl Visualizer {
         &mut self,
         depth_frame: Frame<frame_marker::Depth>,
         color_frame: Frame<frame_marker::Video>,
-        points: Vec<Point3<f32>>,
+        points: Arc<Vec<Arc<Point3<f32>>>>,
         texture_coordinates: Vec<Point2<f32>>,
     ) -> Fallible<()> {
         let color_image: DynamicImage = color_frame.image()?.into();
         let (width, height) = color_image.dimensions();
 
         let colored_points = points
-            .into_iter()
+            .iter()
+            .map(Arc::clone)
             .zip(texture_coordinates.into_iter())
             .map(|(point, texture_coordinate)| {
                 let [x, y]: [_; 2] = texture_coordinate.coords.into();

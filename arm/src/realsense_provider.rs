@@ -128,14 +128,18 @@ impl RealSenseProvider {
             // compute point cloud
             pointcloud.map_to(color_frame.clone())?;
             let points_frame = pointcloud.calculate(depth_frame.clone())?;
-            let points = points_frame
-                .vertices()?
-                .iter()
-                .map(|vertex| {
-                    let [x, y, z] = vertex.xyz;
-                    Point3::new(x, y, z)
-                })
-                .collect::<Vec<_>>();
+            let points = {
+                let pts = points_frame
+                    .vertices()?
+                    .iter()
+                    .map(|vertex| {
+                        let [x, y, z] = vertex.xyz;
+                        Point3::new(x, y, z)
+                    })
+                    .map(Arc::new)
+                    .collect::<Vec<_>>();
+                Arc::new(pts)
+            };
             let texture_coordinates = points_frame
                 .texture_coordinates()?
                 .iter()
@@ -154,7 +158,7 @@ impl RealSenseProvider {
                 let msg = VisualizerMessage::RealSenseData {
                     depth_frame: depth_frame.clone(),
                     color_frame: color_frame.clone(),
-                    points: points.clone(),
+                    points: Arc::clone(&points),
                     texture_coordinates: texture_coordinates.clone(),
                 };
                 if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {

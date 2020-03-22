@@ -12,7 +12,7 @@ pub struct Obj {
     pub x: i32,
     pub y: i32,
     pub angle: f32,
-    pub polygon: LineString<i32>,
+    pub polygon: LineString<f32>,
 }
 
 #[derive(Debug)]
@@ -136,7 +136,10 @@ impl Detector {
                 .iter()
                 .map(|point| {
                     let Point { x, y } = point;
-                    Coordinate { x, y }
+                    Coordinate {
+                        x: x as f32,
+                        y: y as f32,
+                    }
                 })
                 .collect::<Vec<_>>()
                 .into();

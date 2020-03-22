@@ -1,3 +1,4 @@
+use crate::object_detector::Detection;
 use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Obj;
 use nalgebra::{Point2, Point3};
@@ -12,7 +13,7 @@ use std::{
 pub struct RealSenseMessage {
     pub depth_frame: Frame<frame_marker::Depth>,
     pub color_frame: Frame<frame_marker::Video>,
-    pub points: Vec<Point3<f32>>,
+    pub points: Arc<Vec<Arc<Point3<f32>>>>,
     pub texture_coordinates: Vec<Point2<f32>>,
 }
 
@@ -22,16 +23,16 @@ pub enum VisualizerMessage {
     RealSenseData {
         depth_frame: Frame<frame_marker::Depth>,
         color_frame: Frame<frame_marker::Video>,
-        points: Vec<Point3<f32>>,
+        points: Arc<Vec<Arc<Point3<f32>>>>,
         texture_coordinates: Vec<Point2<f32>>,
     },
-    ObjectDetection(Vec<Vec<Vec3b>>),
+    ObjectDetection(Arc<Detection>),
 }
 
 /// Message type sent by object detector.
 #[derive(Debug, Clone)]
 pub struct DetectorMessage {
-    pub objects: Vec<Obj>,
+    pub detection: Arc<Detection>,
     pub timestamp: Instant,
 }
 
@@ -46,7 +47,7 @@ pub enum ControlMessage {
 /// Message type produced by RealSense provider.
 #[derive(Debug, Clone)]
 pub enum DobotMessage {
-    GrabObject(Obj),
+    GrabObject(Arc<Obj>),
     SetHome,
     Noop(Duration),
 }

@@ -116,9 +116,9 @@ impl Controller {
         let mut cache = self.cache.lock().unwrap();
 
         if let Some(msg) = cache.detector_msg.take() {
-            match msg.objects.first() {
+            match msg.detection.objects.first() {
                 Some(obj) => {
-                    let dobot_msg = DobotMessage::GrabObject(obj.to_owned());
+                    let dobot_msg = DobotMessage::GrabObject(obj.clone());
                     if let Err(_) = dobot_tx.send((dobot_msg, Instant::now())) {
                         return Ok(());
                     }
@@ -142,7 +142,7 @@ impl Controller {
     }
 
     async fn start_dobot_worker(&self) -> Fallible<broadcast::Sender<(DobotMessage, Instant)>> {
-        let mut dobot_tx = {
+        let dobot_tx = {
             let (dobot_tx, mut dobot_rx) = broadcast::channel(1);
             let mut dobot = Dobot::open(&self.config.dobot_device).await?;
 
@@ -172,7 +172,7 @@ impl Controller {
                             }
 
                             let (x, y, angle) = {
-                                let Obj { x, y, angle } = obj;
+                                let Obj { x, y, angle, .. } = *obj;
                                 let pos_x = (-y + 563) * (275 - 220) / (-345 + 563) + 220;
                                 // let pos_x = (-y as f32 + 563.0) * (275.0 - 220.0)
                                 //     / (-345.0 + 563.0)
@@ -254,9 +254,9 @@ impl Controller {
                 if enable_auto_grab.load(Ordering::Relaxed) {
                     let mut cache = cache_mutex.lock().unwrap();
                     if let Some(msg) = cache.detector_msg.take() {
-                        match msg.objects.first() {
+                        match msg.detection.objects.first() {
                             Some(obj) => {
-                                let dobot_msg = DobotMessage::GrabObject(obj.to_owned());
+                                let dobot_msg = DobotMessage::GrabObject(obj.clone());
                                 if let Err(_) = dobot_tx.send((dobot_msg, Instant::now())) {
                                     break;
                                 }
