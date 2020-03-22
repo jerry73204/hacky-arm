@@ -1,24 +1,19 @@
 use crate::{
     config::Config,
     message::{ControlMessage, DetectorMessage, DobotMessage, VisualizerMessage},
+    object_detector::Object,
 };
 use dobot::Dobot;
 use failure::Fallible;
-use hacky_detection::Obj;
 use log::{info, warn};
 use std::{
-    future::Future,
-    path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
     time::{Duration, Instant},
 };
-use tokio::{
-    sync::{broadcast, mpsc},
-    task::JoinHandle,
-};
+use tokio::{sync::broadcast, task::JoinHandle};
 
 struct ControllerCache {
     pub detector_msg: Option<Arc<DetectorMessage>>,
@@ -171,8 +166,10 @@ impl Controller {
                                 continue;
                             }
 
+                            // TODO: adjuest position by object distance
+
                             let (x, y, angle) = {
-                                let Obj { x, y, angle, .. } = *obj;
+                                let Object { x, y, angle, .. } = *obj;
                                 let pos_x = (-y + 563) * (275 - 220) / (-345 + 563) + 220;
                                 // let pos_x = (-y as f32 + 563.0) * (275.0 - 220.0)
                                 //     / (-345.0 + 563.0)

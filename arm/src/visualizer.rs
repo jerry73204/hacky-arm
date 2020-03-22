@@ -7,9 +7,8 @@ use crossbeam::channel;
 use failure::Fallible;
 use hacky_arm_common::opencv::{
     core::{Point, Scalar},
-    highgui, imgcodecs, imgproc,
+    highgui, imgproc,
     prelude::*,
-    types::VectorOfi32,
 };
 use image::{DynamicImage, GenericImageView, Rgba};
 use kiss3d::{
@@ -76,7 +75,6 @@ struct VisualizerCache {
     color_frame: Option<Frame<frame_marker::Video>>,
     depth_frame: Option<Frame<frame_marker::Depth>>,
     image: Option<Mat>,
-    points: Option<Vec<(Point3<f32>, Point3<f32>)>>,
 }
 
 impl VisualizerCache {
@@ -85,7 +83,6 @@ impl VisualizerCache {
             color_frame: None,
             depth_frame: None,
             image: None,
-            points: None,
         }
     }
 }

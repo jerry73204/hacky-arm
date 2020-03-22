@@ -1,6 +1,4 @@
-use crate::object_detector::Detection;
-use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
-use hacky_detection::Obj;
+use crate::object_detector::{Detection, Object};
 use nalgebra::{Point2, Point3};
 use realsense_rust::frame::{marker as frame_marker, Frame};
 use std::{
@@ -47,7 +45,7 @@ pub enum ControlMessage {
 /// Message type produced by RealSense provider.
 #[derive(Debug, Clone)]
 pub enum DobotMessage {
-    GrabObject(Arc<Obj>),
+    GrabObject(Arc<Object>),
     SetHome,
     Noop(Duration),
 }

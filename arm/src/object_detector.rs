@@ -5,7 +5,7 @@ use crate::{
 };
 use by_address::ByAddress;
 use failure::Fallible;
-use geo::{prelude::*, Point};
+use geo::{prelude::*, LineString, Point};
 use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Detector;
 use hacky_detection::Obj;
@@ -28,10 +28,19 @@ pub struct ObjectDetector {
 #[derive(Debug, Clone)]
 pub struct Detection {
     pub image: Arc<Vec<Vec<Vec3b>>>,
-    pub objects: Vec<Arc<Obj>>,
+    pub objects: Vec<Arc<Object>>,
     pub cloud_to_image_point_correspondences:
         HashMap<ByAddress<Arc<Point3<f32>>>, Arc<Point2<u32>>>,
-    pub object_to_cloud_correspondences: HashMap<ByAddress<Arc<Obj>>, Vec<Arc<Point3<f32>>>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Object {
+    pub x: i32,
+    pub y: i32,
+    pub angle: f32,
+    pub polygon: LineString<f32>,
+    pub points: Vec<Arc<Point3<f32>>>,
+    pub distance: f32,
 }
 
 impl ObjectDetector {
@@ -151,7 +160,7 @@ impl ObjectDetector {
 
                 let mut color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
 
-                let objects = detector
+                let objects2d = detector
                     .detect(&mut color_mat)?
                     .into_iter()
                     .map(|obj| Arc::new(obj))
@@ -177,10 +186,10 @@ impl ObjectDetector {
                     .collect::<HashMap<_, _>>();
 
                 // compute object to 3d point correspondences
-                let object_to_cloud_correspondences = cloud_to_image_point_correspondences
+                let objects = cloud_to_image_point_correspondences
                     .clone()
                     .into_iter()
-                    .cartesian_product(objects.iter().map(Arc::clone).map(|obj| ByAddress(obj)))
+                    .cartesian_product(objects2d.iter().map(Arc::clone).map(|obj| ByAddress(obj)))
                     .filter_map(|((point3d, point2d), object)| {
                         let point2d_geo = Point::new(point2d.x as f32, point2d.y as f32);
                         let polygon = &object.polygon;
@@ -191,7 +200,28 @@ impl ObjectDetector {
                             None
                         }
                     })
-                    .into_group_map();
+                    .into_group_map()
+                    .into_iter()
+                    .map(|(obj, points)| {
+                        let Obj {
+                            x,
+                            y,
+                            angle,
+                            polygon,
+                        } = (**obj).clone();
+                        let distance = points.iter().map(|point| point.coords.norm()).sum::<f32>()
+                            / points.len() as f32;
+                        let object = Object {
+                            x,
+                            y,
+                            angle,
+                            polygon,
+                            distance,
+                            points,
+                        };
+                        Arc::new(object)
+                    })
+                    .collect::<Vec<_>>();
 
                 let image = Arc::new(color_mat.to_vec_2d::<Vec3b>()?);
 
@@ -199,7 +229,6 @@ impl ObjectDetector {
                     image,
                     objects,
                     cloud_to_image_point_correspondences,
-                    object_to_cloud_correspondences,
                 };
 
                 // compute objects and points correspondences

@@ -4,11 +4,11 @@ use crate::{
     utils::RateMeter,
 };
 use failure::Fallible;
-use log::{info, warn};
+use log::info;
 use nalgebra::{Point2, Point3};
 use realsense_rust::{
-    frame::marker as frame_marker, processing_block::marker as processing_block_marker,
-    Config as RsConfig, Format, Pipeline, ProcessingBlock, StreamKind,
+    processing_block::marker as processing_block_marker, Config as RsConfig, Pipeline,
+    ProcessingBlock, StreamKind,
 };
 use std::sync::Arc;
 use tokio::{sync::broadcast, task::JoinHandle};
