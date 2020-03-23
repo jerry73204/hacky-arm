@@ -139,11 +139,21 @@ class Detector:
             objects.append({'point': point, 'angle': angle})
             cv.putText(
                 raw,
-                f'{point}, {angle:.2f}',
-                point,
+                f'{point}',
+                (point[0] + 50, point[1] - 10),
                 cv.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 (0, 0, 255),
+                2,
+            )
+            cv.putText(
+                raw,
+                f'{angle:.2f}',
+                (point[0] + 50, point[1] + 15),
+                cv.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 255),
+                2,
             )
 
             # draw the bounding box
