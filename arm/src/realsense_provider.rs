@@ -7,8 +7,8 @@ use failure::Fallible;
 use log::info;
 use nalgebra::{Point2, Point3};
 use realsense_rust::{
-    processing_block::marker as processing_block_marker, Config as RsConfig, Pipeline,
-    ProcessingBlock, StreamKind,
+    frame::marker as frame_marker, processing_block::marker as processing_block_marker,
+    Config as RsConfig, Pipeline, ProcessingBlock, StreamKind,
 };
 use std::sync::Arc;
 use tokio::{sync::broadcast, task::JoinHandle};
@@ -52,8 +52,10 @@ impl RealSenseProvider {
             ..
         } = &*self.config;
 
-        // pointcloud filter
+        // filters
         let mut pointcloud = ProcessingBlock::<processing_block_marker::PointCloud>::create()?;
+        let mut aligner =
+            ProcessingBlock::<processing_block_marker::Align>::create(StreamKind::Color)?;
 
         // setup pipeline
         let mut pipeline = {
@@ -82,48 +84,13 @@ impl RealSenseProvider {
         loop {
             // wait for data from device
             let frames = pipeline.wait_async(None).await?;
+            let frames = aligner
+                .process(frames)?
+                .try_extend_to::<frame_marker::Composite>()?
+                .unwrap();
+
             let depth_frame = frames.depth_frame()?.unwrap();
             let color_frame = frames.color_frame()?.unwrap();
-
-            // extract depth and color frames
-            // let (depth_frame, color_frame) = {
-            //     let mut depth_frame_opt = None;
-            //     let mut color_frame_opt = None;
-
-            //     for frame_result in frames.try_into_iter()? {
-            //         let frame_any = frame_result?;
-            //         let frame_any = match frame_any.try_extend_to::<frame_marker::Depth>()? {
-            //             Ok(depth_frame) => {
-            //                 depth_frame_opt = Some(depth_frame);
-            //                 continue;
-            //             }
-            //             Err(orig_frame) => orig_frame,
-            //         };
-            //         let _frame_any = match frame_any.try_extend_to::<frame_marker::Video>()? {
-            //             Ok(color_frame) => {
-            //                 color_frame_opt = Some(color_frame);
-            //                 continue;
-            //             }
-            //             Err(orig_frame) => orig_frame,
-            //         };
-            //     }
-
-            //     let depth_frame = match depth_frame_opt {
-            //         Some(frame) => frame,
-            //         None => {
-            //             warn!("missing depth frame");
-            //             continue;
-            //         }
-            //     };
-            //     let color_frame = match color_frame_opt {
-            //         Some(frame) => frame,
-            //         None => {
-            //             warn!("missing color frame");
-            //             continue;
-            //         }
-            //     };
-            //     (Arc::new(depth_frame), Arc::new(color_frame))
-            // };
 
             // compute point cloud
             pointcloud.map_to(color_frame.clone())?;

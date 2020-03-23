@@ -168,7 +168,7 @@ impl Visualizer {
                         "Object Detection Demo",
                         Point::new(5, 45),
                         imgproc::FONT_HERSHEY_SIMPLEX,
-                        2.0,
+                        1.0,
                         Scalar::new(0., 255., 0., 0.),
                         2,
                         imgproc::LINE_8,
@@ -237,6 +237,12 @@ impl Visualizer {
         if let Some(depth_frame) = &self.cache.depth_frame {
             let depth_image = depth_frame.image()?;
             let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
+            let depth_mat = depth_mat
+                .mul(
+                    &Mat::ones_size(depth_mat.size()?, depth_mat.typ()?)?.to_mat()?,
+                    255.0,
+                )?
+                .to_mat()?;
             highgui::imshow("Depth", &depth_mat).unwrap();
         }
 

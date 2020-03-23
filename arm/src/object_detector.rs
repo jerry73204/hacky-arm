@@ -3,17 +3,18 @@ use crate::{
     message::{DetectorMessage, RealSenseMessage, VisualizerMessage},
     utils::{HackyTryFrom, RateMeter},
 };
-use by_address::ByAddress;
 use failure::Fallible;
-use geo::{prelude::*, LineString, Point};
-use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
+use geo::LineString;
+use hacky_arm_common::opencv::{
+    core::{Point, Scalar, Vec3b},
+    imgproc,
+    prelude::*,
+};
 use hacky_detection::Detector;
 use hacky_detection::Obj;
-use itertools::Itertools;
 use log::info;
-use nalgebra::{Point2, Point3};
 use realsense_rust::prelude::*;
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 use tokio::{sync::broadcast, task::JoinHandle};
 
 #[derive(Debug)]
@@ -29,8 +30,6 @@ pub struct ObjectDetector {
 pub struct Detection {
     pub image: Arc<Vec<Vec<Vec3b>>>,
     pub objects: Vec<Arc<Object>>,
-    pub cloud_to_image_point_correspondences:
-        HashMap<ByAddress<Arc<Point3<f32>>>, Arc<Point2<u32>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -39,7 +38,7 @@ pub struct Object {
     pub y: i32,
     pub angle: f32,
     pub polygon: LineString<f32>,
-    pub points: Vec<Arc<Point3<f32>>>,
+    // pub points: Vec<Arc<Point3<f32>>>,
     pub depth: f32,
 }
 
@@ -143,96 +142,61 @@ impl ObjectDetector {
 
             // run detection
             // the _blocking_ call is necessary since the detection may take long time
-            let detection = tokio::task::spawn_blocking(move || -> Fallible<_> {
+            let detection = tokio::task::spawn(async move {
                 let RealSenseMessage {
                     color_frame,
                     depth_frame,
-                    points,
-                    texture_coordinates,
+                    ..
                 } = &*input_msg;
 
                 // detect objects
                 let color_image = color_frame.image()?;
-                let depth_image = depth_frame.image()?;
-                // let (width, height) = color_image.dimensions();
                 let width = color_frame.width()?;
                 let height = color_frame.height()?;
-
                 let mut color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
 
-                let objects2d = detector
-                    .detect(&mut color_mat)?
-                    .into_iter()
-                    .map(|obj| Arc::new(obj))
-                    .collect::<Vec<_>>();
+                let objects2d = detector.detect(&mut color_mat)?;
 
                 // compute 3D to 2D point correspondences
-                let cloud_to_image_point_correspondences = points
-                    .iter()
-                    .map(Arc::clone)
-                    .map(|point| ByAddress(point))
-                    .zip(texture_coordinates.iter())
-                    .filter_map(|(point3d, texture_coordinate)| {
-                        let [x, y]: [_; 2] = texture_coordinate.coords.into();
-                        if x >= 0.0 && x < 1.0 && y >= 0.0 && y < 1.0 {
-                            let row = (y * height as f32) as u32;
-                            let col = (x * width as f32) as u32;
-                            let point2d = Arc::new(Point2::new(col, row));
-                            Some((point3d, point2d))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<HashMap<_, _>>();
 
-                // compute object to 3d point correspondences
-                let objects = cloud_to_image_point_correspondences
-                    .clone()
+                let objects = objects2d
                     .into_iter()
-                    .cartesian_product(objects2d.iter().map(Arc::clone).map(|obj| ByAddress(obj)))
-                    .filter_map(|((point3d, point2d), object)| {
-                        let point2d_geo = Point::new(point2d.x as f32, point2d.y as f32);
-                        let polygon = &object.polygon;
-
-                        if polygon.contains(&point2d_geo) {
-                            Some((object, point3d.0))
-                        } else {
-                            None
-                        }
-                    })
-                    .into_group_map()
-                    .into_iter()
-                    .map(|(obj, points)| {
+                    .map(|obj| {
                         let Obj {
                             x,
                             y,
                             angle,
                             polygon,
-                        } = (**obj).clone();
-                        let depth = points.iter().map(|point| point.coords.z).sum::<f32>()
-                            / points.len() as f32;
+                        } = obj;
+                        let distance = depth_frame.distance(x as usize, y as usize)?;
+                        imgproc::put_text(
+                            &mut color_mat,
+                            &format!("distance {}", distance),
+                            Point::new(x, y + 15),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            1,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
                         let object = Object {
                             x,
                             y,
                             angle,
                             polygon,
-                            depth,
-                            points,
+                            depth: distance,
                         };
-                        Arc::new(object)
+                        Ok(Arc::new(object))
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<Fallible<Vec<_>>>()?;
 
                 let image = Arc::new(color_mat.to_vec_2d::<Vec3b>()?);
 
-                let detection = Detection {
-                    image,
-                    objects,
-                    cloud_to_image_point_correspondences,
-                };
+                let detection = Detection { image, objects };
 
                 // compute objects and points correspondences
-                Ok(Arc::new(detection))
+                Fallible::Ok(Arc::new(detection))
             })
             .await??;
 
