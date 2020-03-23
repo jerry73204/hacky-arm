@@ -225,7 +225,7 @@ impl Detector {
         for obj in objects.iter() {
             imgproc::put_text(
                 raw,
-                &format!("{:?}", obj),
+                &format!("({}, {}), {} degrees", obj.x, obj.y, obj.angle),
                 Point::new(obj.x, obj.y),
                 imgproc::FONT_HERSHEY_SIMPLEX,
                 0.5,
