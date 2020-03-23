@@ -40,7 +40,7 @@ pub struct Object {
     pub angle: f32,
     pub polygon: LineString<f32>,
     pub points: Vec<Arc<Point3<f32>>>,
-    pub distance: f32,
+    pub depth: f32,
 }
 
 impl ObjectDetector {
@@ -209,14 +209,14 @@ impl ObjectDetector {
                             angle,
                             polygon,
                         } = (**obj).clone();
-                        let distance = points.iter().map(|point| point.coords.norm()).sum::<f32>()
+                        let depth = points.iter().map(|point| point.coords.z).sum::<f32>()
                             / points.len() as f32;
                         let object = Object {
                             x,
                             y,
                             angle,
                             polygon,
-                            distance,
+                            depth,
                             points,
                         };
                         Arc::new(object)

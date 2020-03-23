@@ -15,6 +15,13 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_object_detector")]
     pub object_detector: ObjectDetectorConfig,
     pub visualizer: VisualizerConfig,
+    pub controller: ControllerConfig,
+}
+
+/// The controller configuration.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControllerConfig {
+    pub coord_transform: [f64; 6],
 }
 
 /// The RealSense configuration.
