@@ -175,30 +175,30 @@ impl Visualizer {
                         imgproc::LINE_8,
                         false,
                     )?;
-                    for obj in detection.objects.iter() {
-                        imgproc::put_text(
-                            &mut image,
-                            &format!("{:.1}(deg)", obj.angle),
-                            Point::new(obj.x + 40, obj.y - 10),
-                            imgproc::FONT_HERSHEY_SIMPLEX,
-                            0.5,
-                            Scalar::new(0., 0., 255., 0.),
-                            2,
-                            imgproc::LINE_8,
-                            false,
-                        )?;
-                        imgproc::put_text(
-                            &mut image,
-                            &format!("{:.2}(m)", obj.distance),
-                            Point::new(obj.x + 40, obj.y + 15),
-                            imgproc::FONT_HERSHEY_SIMPLEX,
-                            0.5,
-                            Scalar::new(0., 0., 255., 0.),
-                            2,
-                            imgproc::LINE_8,
-                            false,
-                        )?;
-                    }
+                    // for obj in detection.objects.iter() {
+                    //     imgproc::put_text(
+                    //         &mut image,
+                    //         &format!("{:.1}(deg)", obj.angle),
+                    //         Point::new(obj.x + 40, obj.y - 10),
+                    //         imgproc::FONT_HERSHEY_SIMPLEX,
+                    //         0.5,
+                    //         Scalar::new(0., 0., 255., 0.),
+                    //         2,
+                    //         imgproc::LINE_8,
+                    //         false,
+                    //     )?;
+                    //     imgproc::put_text(
+                    //         &mut image,
+                    //         &format!("{:.2}(m)", obj.distance),
+                    //         Point::new(obj.x + 40, obj.y + 15),
+                    //         imgproc::FONT_HERSHEY_SIMPLEX,
+                    //         0.5,
+                    //         Scalar::new(0., 0., 255., 0.),
+                    //         2,
+                    //         imgproc::LINE_8,
+                    //         false,
+                    //     )?;
+                    // }
                     self.cache.image = Some(image);
                 }
             }

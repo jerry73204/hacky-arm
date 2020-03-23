@@ -170,12 +170,13 @@ impl Controller {
                             // TODO: adjuest position by object distance
                             let [a00, a01, b0, a10, a11, b1] = config.controller.coord_transform;
 
-                            let (x, y, angle) = {
-                                let Object { x, y, angle, .. } = *obj;
+                            let (x, y, angle, depth) = {
+                                let Object { x, y, angle, depth, .. } = *obj;
                                 let x = x as f64;
                                 let y = y as f64;
                                 let pos_x = a00 * x + a01 * y + b0;
                                 let pos_y = a10 * x + a11 * y + b1;
+
                                 // let pos_x = (-y + 563) * (275 - 220) / (-345 + 563) + 220;
                                 // let pos_x = (-y as f32 + 563.0) * (275.0 - 220.0)
                                 //     / (-345.0 + 563.0)
@@ -186,7 +187,7 @@ impl Controller {
                                 // let pos_y = (-x as f32 + 765.0) * (50.0 - 0.0) / (-572.0 + 765.0)
                                 //     + 0.0
                                 //     + 10.0;
-                                (pos_x as f32, pos_y as f32, angle)
+                                (pos_x as f32, pos_y as f32, angle, depth)
                             };
 
                             dobot.release().await?.wait().await?;

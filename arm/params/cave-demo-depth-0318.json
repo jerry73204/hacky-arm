@@ -9,8 +9,8 @@
     "min_arc_length": 100,
     "max_arc_length": 1500,
     "roi": [
-        0.64,
-        0.72
+        0.9,
+        0.9
     ],
     "lower_bound": [
         97,
