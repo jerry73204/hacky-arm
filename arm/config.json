@@ -15,7 +15,7 @@
         }
     },
     "object_detector": {
-        "params_file": "params/black.json",
+      "params_file": "params/cave-demo-depth-0318.json",
     },
     "visualizer": {
         "enabled": true,
