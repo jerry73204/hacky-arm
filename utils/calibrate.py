@@ -225,8 +225,6 @@ while True:
         collecting = not collecting
 
     else:
-        print(key)
-        continue
         for param in [
             'blur_kernel',
             'n_dilations',
