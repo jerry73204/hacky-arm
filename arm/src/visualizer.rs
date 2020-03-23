@@ -107,12 +107,12 @@ impl Visualizer {
             let pcd_tx = {
                 let (pcd_tx, pcd_rx) = channel::bounded(4);
 
-                std::thread::spawn(move || {
-                    let state = PcdVizState::new(pcd_rx);
-                    let mut window = Window::new("point cloud");
-                    window.set_light(Light::StickToCamera);
-                    window.render_loop(state);
-                });
+                // std::thread::spawn(move || {
+                //     let state = PcdVizState::new(pcd_rx);
+                //     let mut window = Window::new("point cloud");
+                //     window.set_light(Light::StickToCamera);
+                //     window.render_loop(state);
+                // });
                 pcd_tx
             };
 
@@ -163,6 +163,7 @@ impl Visualizer {
                 }
                 VisualizerMessage::ObjectDetection(detection) => {
                     let mut image = Mat::from_slice_2d(&detection.image)?;
+                    // info!("{:?}", detection.cloud_to_image_point_correspondences);
                     imgproc::put_text(
                         &mut image,
                         "Object Detection Demo",
@@ -170,10 +171,34 @@ impl Visualizer {
                         imgproc::FONT_HERSHEY_SIMPLEX,
                         1.0,
                         Scalar::new(0., 255., 0., 0.),
-                        2,
+                        3,
                         imgproc::LINE_8,
                         false,
                     )?;
+                    for obj in detection.objects.iter() {
+                        imgproc::put_text(
+                            &mut image,
+                            &format!("{:.1}(deg)", obj.angle),
+                            Point::new(obj.x + 40, obj.y - 10),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            2,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
+                        imgproc::put_text(
+                            &mut image,
+                            &format!("{:.2}(m)", obj.distance),
+                            Point::new(obj.x + 40, obj.y + 15),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            2,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
+                    }
                     self.cache.image = Some(image);
                 }
             }
@@ -231,7 +256,7 @@ impl Visualizer {
         if let Some(color_frame) = &self.cache.color_frame {
             let color_image = color_frame.image()?;
             let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
-            highgui::imshow("Color", &color_mat)?;
+            // highgui::imshow("Color", &color_mat)?;
         }
 
         if let Some(depth_frame) = &self.cache.depth_frame {
@@ -254,14 +279,17 @@ impl Visualizer {
         match key {
             13 => {
                 // enter
+                info!("Grab!");
                 self.control_tx.send(ControlMessage::Enter).unwrap();
             }
             104 => {
                 // h
+                info!("Set home!");
                 self.control_tx.send(ControlMessage::Home).unwrap();
             }
             97 => {
                 // a
+                info!("Auto mode!");
                 self.control_tx
                     .send(ControlMessage::ToggleAutoGrab)
                     .unwrap();
