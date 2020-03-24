@@ -24,12 +24,12 @@ use tokio::{runtime::Runtime, sync::broadcast, task::JoinHandle};
 
 #[derive(Debug)]
 struct PcdVizState {
-    rx: channel::Receiver<Vec<(Arc<Point3<f32>>, Point3<f32>)>>,
-    points: Option<Vec<(Arc<Point3<f32>>, Point3<f32>)>>,
+    rx: channel::Receiver<Vec<(Point3<f32>, Point3<f32>)>>,
+    points: Option<Vec<(Point3<f32>, Point3<f32>)>>,
 }
 
 impl PcdVizState {
-    pub fn new(rx: channel::Receiver<Vec<(Arc<Point3<f32>>, Point3<f32>)>>) -> Self {
+    pub fn new(rx: channel::Receiver<Vec<(Point3<f32>, Point3<f32>)>>) -> Self {
         let state = Self { rx, points: None };
         state
     }
@@ -65,7 +65,7 @@ impl State for PcdVizState {
         // draw points
         if let Some(points) = &self.points {
             for (position, color) in points.iter() {
-                window.draw_point(&(rot * (**position)), color);
+                window.draw_point(&(rot * position), color);
             }
         }
     }
@@ -106,6 +106,14 @@ impl Visualizer {
         let handle = tokio::spawn(async {
             let pcd_tx = {
                 let (pcd_tx, pcd_rx) = channel::bounded(4);
+
+                std::thread::spawn(move || {
+                    let state = PcdVizState::new(pcd_rx);
+                    let mut window = Window::new("point cloud");
+                    window.set_light(Light::StickToCamera);
+                    window.render_loop(state);
+                });
+
                 pcd_tx
             };
 

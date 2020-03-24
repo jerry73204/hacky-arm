@@ -150,14 +150,11 @@ impl ObjectDetector {
 
                 // detect objects
                 let color_image = color_frame.image()?;
-                let width = color_frame.width()?;
-                let height = color_frame.height()?;
                 let mut color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
 
                 let objects2d = detector.detect(&mut color_mat)?;
 
-                // compute 3D to 2D point correspondences
-
+                // get distance of each object
                 let objects = objects2d
                     .into_iter()
                     .map(|obj| {
