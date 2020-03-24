@@ -256,7 +256,7 @@ impl Visualizer {
         if let Some(color_frame) = &self.cache.color_frame {
             let color_image = color_frame.image()?;
             let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
-            // highgui::imshow("Color", &color_mat)?;
+            highgui::imshow("Color", &color_mat)?;
         }
 
         if let Some(depth_frame) = &self.cache.depth_frame {
@@ -265,7 +265,7 @@ impl Visualizer {
             let depth_mat = depth_mat
                 .mul(
                     &Mat::ones_size(depth_mat.size()?, depth_mat.typ()?)?.to_mat()?,
-                    255.0,
+                    200.0,
                 )?
                 .to_mat()?;
             highgui::imshow("Depth", &depth_mat).unwrap();
