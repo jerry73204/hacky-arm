@@ -152,6 +152,7 @@ impl Visualizer {
 
         let mut runtime = Runtime::new()?;
         let mut rate_meter = RateMeter::seconds();
+        let mut is_dobot_busy = true;
 
         loop {
             let msg = match runtime.block_on(self.msg_rx.recv()) {
@@ -213,6 +214,8 @@ impl Visualizer {
                     // }
                     self.cache.image = Some(image);
                 }
+                VisualizerMessage::DobotAvailable => is_dobot_busy = false,
+                VisualizerMessage::DobotBusy => is_dobot_busy = true,
             }
 
             self.render()?;

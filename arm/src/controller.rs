@@ -109,7 +109,7 @@ impl Controller {
             Fallible::Ok(())
         };
 
-        futures::try_join!(dobot_future, auto_grab_future, loop_future,)?;
+        futures::try_join!(dobot_future, auto_grab_future, loop_future)?;
 
         Ok(())
     }
@@ -155,6 +155,7 @@ impl Controller {
         JoinHandle<Fallible<()>>,
         broadcast::Sender<(DobotMessage, Instant)>,
     )> {
+        let mut viz_msg_tx = self.viz_msg_tx.clone();
         let (dobot_tx, mut dobot_rx) = broadcast::channel(1);
         let mut dobot = Dobot::open(&self.config.dobot_device).await?;
         let config = self.config.clone();
@@ -163,9 +164,14 @@ impl Controller {
             info!("dobot worker started");
             let mut min_timestamp = Instant::now();
 
-            // dobot.set_home().await?.wait().await?;
+            // move to home
             dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
+
             loop {
+                // tell visaulizer the dobot is available
+                let _ = viz_msg_tx.send(Arc::new(VisualizerMessage::DobotAvailable));
+
+                // wait for next command
                 let (msg, timestamp) = match dobot_rx.recv().await {
                     Ok(msg) => msg,
                     Err(broadcast::RecvError::Closed) => break,
@@ -175,6 +181,9 @@ impl Controller {
                 if timestamp < Instant::now() - Duration::from_millis(100) {
                     continue;
                 }
+
+                // tell visaulizer the dobot is busy
+                let _ = viz_msg_tx.send(Arc::new(VisualizerMessage::DobotBusy));
 
                 match msg {
                     DobotMessage::GrabObject(obj) => {
