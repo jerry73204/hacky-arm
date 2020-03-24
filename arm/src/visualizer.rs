@@ -279,6 +279,11 @@ impl Visualizer {
                 info!("Set home!");
                 self.control_tx.send(ControlMessage::Home).unwrap();
             }
+            114 => {
+                // r
+                info!("Reset!");
+                self.control_tx.send(ControlMessage::Reset).unwrap();
+            }
             97 => {
                 // a
                 info!("Auto mode!");

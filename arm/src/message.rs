@@ -39,6 +39,7 @@ pub struct DetectorMessage {
 pub enum ControlMessage {
     Enter,
     Home,
+    Reset,
     ToggleAutoGrab,
 }
 
@@ -46,6 +47,7 @@ pub enum ControlMessage {
 #[derive(Debug, Clone)]
 pub enum DobotMessage {
     GrabObject(Arc<Object>),
-    SetHome,
+    Home,
+    Reset,
     Noop(Duration),
 }

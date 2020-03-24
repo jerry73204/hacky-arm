@@ -88,6 +88,9 @@ impl Controller {
                         ControlMessage::Home => {
                             self.try_set_home(&mut dobot_tx)?;
                         }
+                        ControlMessage::Reset => {
+                            self.try_reset(&mut dobot_tx)?;
+                        }
                         ControlMessage::ToggleAutoGrab => {
                             let prev = self.enable_auto_grab.fetch_xor(true, Ordering::Relaxed);
                             if prev {
@@ -126,13 +129,16 @@ impl Controller {
         Ok(())
     }
 
+    fn try_reset(&self, dobot_tx: &mut broadcast::Sender<(DobotMessage, Instant)>) -> Fallible<()> {
+        let _ = dobot_tx.send((DobotMessage::Reset, Instant::now()));
+        Ok(())
+    }
+
     fn try_set_home(
         &self,
         dobot_tx: &mut broadcast::Sender<(DobotMessage, Instant)>,
     ) -> Fallible<()> {
-        if let Err(_) = dobot_tx.send((DobotMessage::SetHome, Instant::now())) {
-            return Ok(());
-        }
+        let _ = dobot_tx.send((DobotMessage::Home, Instant::now()));
         Ok(())
     }
 
@@ -227,8 +233,11 @@ impl Controller {
                             tokio::time::delay_for(Duration::from_secs(2)).await;
                             min_timestamp = Instant::now();
                         }
-                        DobotMessage::SetHome => {
+                        DobotMessage::Reset => {
                             dobot.set_home().await?.wait().await?;
+                            dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
+                        }
+                        DobotMessage::Home => {
                             dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
                         }
                         DobotMessage::Noop(duration) => {
