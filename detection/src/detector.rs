@@ -29,6 +29,7 @@ pub struct Detector {
     pub roi: [f64; 2],
     pub lower_bound: [i32; 3],
     pub upper_bound: [i32; 3],
+    pub draw_position: bool,
 }
 
 impl Default for Detector {
@@ -46,6 +47,7 @@ impl Default for Detector {
             roi: [0.8, 0.8],
             lower_bound: [0, 57, 95],
             upper_bound: [26, 158, 255],
+            draw_position: true,
         }
     }
 }
@@ -222,18 +224,31 @@ impl Detector {
         }
 
         // show objects info
-        for obj in objects.iter() {
-            imgproc::put_text(
-                raw,
-                &format!("({}, {}), {} degrees", obj.x, obj.y, obj.angle),
-                Point::new(obj.x, obj.y),
-                imgproc::FONT_HERSHEY_SIMPLEX,
-                0.5,
-                Scalar::new(0., 0., 255., 0.),
-                1,
-                imgproc::LINE_8,
-                false,
-            )?;
+        if self.draw_position {
+            for obj in objects.iter() {
+                imgproc::put_text(
+                    raw,
+                    &format!("({}, {})", obj.x, obj.y),
+                    Point::new(obj.x + 20, obj.y - 10),
+                    imgproc::FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    Scalar::new(0., 0., 255., 0.),
+                    1,
+                    imgproc::LINE_8,
+                    false,
+                )?;
+                imgproc::put_text(
+                    raw,
+                    &format!("angle: {:.2}(deg)", obj.angle),
+                    Point::new(obj.x + 20, obj.y + 15),
+                    imgproc::FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    Scalar::new(0., 0., 255., 0.),
+                    1,
+                    imgproc::LINE_8,
+                    false,
+                )?;
+            }
         }
 
         Ok(objects)
