@@ -1,5 +1,5 @@
 use crate::{
-    config::Config,
+    config::{Config, VisualizerConfig},
     message::{ControlMessage, VisualizerMessage},
     utils::{HackyTryFrom, RateMeter},
 };
@@ -92,7 +92,7 @@ pub struct Visualizer {
     config: Arc<Config>,
     msg_rx: broadcast::Receiver<Arc<VisualizerMessage>>,
     control_tx: broadcast::Sender<ControlMessage>,
-    pcd_tx: channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>,
+    pcd_tx: Option<channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>>,
     cache: VisualizerCache,
 }
 
@@ -104,28 +104,39 @@ impl Visualizer {
         let cache = VisualizerCache::new();
 
         let handle = tokio::spawn(async {
-            let pcd_tx = {
+            let (pcd_tx, pcd_viewer_future) = if config.visualizer.enable_pcd_viewer {
                 let (pcd_tx, pcd_rx) = channel::bounded(4);
 
-                std::thread::spawn(move || {
+                let handle = tokio::task::spawn_blocking(move || {
                     let state = PcdVizState::new(pcd_rx);
                     let mut window = Window::new("point cloud");
                     window.set_light(Light::StickToCamera);
                     window.render_loop(state);
                 });
+                let future = async move { Fallible::Ok(handle.await?) };
 
-                pcd_tx
+                (Some(pcd_tx), Some(future))
+            } else {
+                (None, None)
             };
 
-            let visualizer = Self {
-                config,
-                msg_rx,
-                control_tx,
-                pcd_tx,
-                cache,
+            let viz_future = async move {
+                tokio::task::spawn_blocking(move || {
+                    let visualizer = Self {
+                        config,
+                        msg_rx,
+                        control_tx,
+                        pcd_tx,
+                        cache,
+                    };
+                    visualizer.run()?;
+                    Fallible::Ok(())
+                })
+                .await??;
+                Ok(())
             };
 
-            tokio::task::spawn_blocking(|| visualizer.run()).await??;
+            futures::try_join!(viz_future, futures::future::try_join_all(pcd_viewer_future))?;
             Fallible::Ok(())
         });
 
@@ -225,6 +236,7 @@ impl Visualizer {
         let color_image: DynamicImage = color_frame.image()?.into();
         let (width, height) = color_image.dimensions();
 
+        // construct points with color
         let colored_points = points
             .iter()
             .zip(texture_coordinates.into_iter())
@@ -243,7 +255,10 @@ impl Visualizer {
             })
             .collect::<Vec<_>>();
 
-        let _ = self.pcd_tx.send(colored_points);
+        // send to point cloud viewer
+        if let Some(tx) = &self.pcd_tx {
+            let _ = tx.send(colored_points);
+        }
 
         self.cache.color_frame = Some(color_frame);
         self.cache.depth_frame = Some(depth_frame);
@@ -251,28 +266,40 @@ impl Visualizer {
     }
 
     fn render(&self) -> Fallible<()> {
-        highgui::named_window("Detection", 0)?;
+        let VisualizerConfig {
+            enable_video_viewer,
+            enable_depth_viewer,
+            enable_detection_viewer,
+            ..
+        } = self.config.visualizer;
 
-        if let Some(color_frame) = &self.cache.color_frame {
-            let color_image = color_frame.image()?;
-            let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
-            highgui::imshow("Color", &color_mat)?;
+        if enable_video_viewer {
+            if let Some(color_frame) = &self.cache.color_frame {
+                let color_image = color_frame.image()?;
+                let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
+                highgui::imshow("Color", &color_mat)?;
+            }
         }
 
-        if let Some(depth_frame) = &self.cache.depth_frame {
-            let depth_image = depth_frame.image()?;
-            let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
-            let depth_mat = depth_mat
-                .mul(
-                    &Mat::ones_size(depth_mat.size()?, depth_mat.typ()?)?.to_mat()?,
-                    200.0,
-                )?
-                .to_mat()?;
-            highgui::imshow("Depth", &depth_mat).unwrap();
+        if enable_depth_viewer {
+            if let Some(depth_frame) = &self.cache.depth_frame {
+                let depth_image = depth_frame.image()?;
+                let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
+                let depth_mat = depth_mat
+                    .mul(
+                        &Mat::ones_size(depth_mat.size()?, depth_mat.typ()?)?.to_mat()?,
+                        200.0,
+                    )?
+                    .to_mat()?;
+                highgui::imshow("Depth", &depth_mat).unwrap();
+            }
         }
 
-        if let Some(image) = &self.cache.image {
-            highgui::imshow("Detection", image)?;
+        if enable_detection_viewer {
+            if let Some(image) = &self.cache.image {
+                highgui::named_window("Detection", 0)?;
+                highgui::imshow("Detection", image)?;
+            }
         }
 
         let key = highgui::wait_key(1)?;

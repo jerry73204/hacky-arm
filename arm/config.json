@@ -18,7 +18,10 @@
       "params_file": "params/cave-demo-depth-0318.json",
     },
     "visualizer": {
-        "enabled": true,
+        "enable_pcd_viewer": true,
+        "enable_video_viewer": true,
+        "enable_depth_viewer": true,
+        "enable_detection_viewer": true,
     },
     "controller": {
         "coord_transform": [

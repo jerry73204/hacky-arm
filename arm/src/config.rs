@@ -77,7 +77,10 @@ pub struct ObjectDetectorConfig {
 /// The visualizer configuration.
 #[derive(Debug, Clone, Deserialize)]
 pub struct VisualizerConfig {
-    pub enabled: bool,
+    pub enable_pcd_viewer: bool,
+    pub enable_video_viewer: bool,
+    pub enable_depth_viewer: bool,
+    pub enable_detection_viewer: bool,
 }
 
 impl Config {
