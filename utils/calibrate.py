@@ -2,21 +2,26 @@
 import cv2 as cv
 import argparse
 from detector import Detector
+from video import Video
 from arm import Arm
 import json
+
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--config',
     # default=None,
-    default='output.json',
+    # default='output.json',
+    default='configs/0325.json',
     help='load config file'
 )
 parser.add_argument(
     '--input',
     # default='./demo.jpg',
-    default='/dev/video6',
+    # default='/dev/video6',
+    # default='/dev/video6',
+    default='realsense',
     help='input source'
 )
 parser.add_argument(
@@ -27,19 +32,15 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-# WIDTH = 640
-# HEIGHT = 480
+WIDTH = 640
+HEIGHT = 480
+FONT_SCALE = 0.5
+FONT_THICKNESS = 1
 
-WIDTH = 1280
-HEIGHT = 720
+# WIDTH = 1280
+# HEIGHT = 720
 
-if '/dev/video' in args.input:
-    use_camera = True
-    cap = cv.VideoCapture(int(args.input.split('/dev/video')[-1]))
-else:
-    use_camera = False
-    frame = cv.imread(args.input)
-
+video = Video(args.input, width=WIDTH, height=HEIGHT)
 
 if args.config is not None:
     with open(args.config) as f:
@@ -109,152 +110,157 @@ collecting = False
 data_pair = []
 
 arm.go_home()
-while True:
-    if use_camera:
-        ret, frame = cap.read()
-    raw = cv.resize(frame, (WIDTH, HEIGHT))
 
-    # for cnt in contours:
-    mid, img, objects = detector.detect(raw)
+try:
+    while True:
+        raw = video.get_frame()
 
-    # show arm position
-    arm_pos = arm.position[:2]
-    arm_pos = tuple(int(p) for p in arm_pos)
-    cv.putText(
-        img,
-        f'End effector: {arm_pos}',
-        (5, int(HEIGHT * 0.9)),
-        cv.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (0, 255, 215),
-        2,
-    )
+        # for cnt in contours:
+        mid, img, objects = detector.detect(raw)
 
-    # show target position
-    if len(objects) > 0:
-        obj_pos = objects[0]['point']
+        # show arm position
+        arm_pos = arm.position[:3]
+        arm_pos = tuple(int(p) for p in arm_pos)
         cv.putText(
             img,
-            f'Target: {obj_pos}',
-            (5, int(HEIGHT * 0.95)),
+            f'End effector: {arm_pos}',
+            (5, int(HEIGHT * 0.9)),
             cv.FONT_HERSHEY_SIMPLEX,
-            0.8,
+            FONT_SCALE,
             (0, 255, 215),
-            2,
-        )
-    else:
-        cv.putText(
-            img,
-            f'Target: none',
-            (5, int(HEIGHT * 0.95)),
-            cv.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (0, 255, 215),
-            2,
+            FONT_THICKNESS,
         )
 
-    if len(data_pair) > 0:
-        if len(data_pair) == 2:
+        # show target position
+        if len(objects) > 0:
+            obj_pos = objects[0]['point']
             cv.putText(
                 img,
-                f'Target: {data_pair}',
-                (int(WIDTH * 0.7), int(HEIGHT * 0.9)),
+                f'Target: {obj_pos}',
+                (5, int(HEIGHT * 0.95)),
                 cv.FONT_HERSHEY_SIMPLEX,
-                0.8,
+                FONT_SCALE,
                 (0, 255, 215),
-                2,
+                FONT_THICKNESS,
             )
         else:
             cv.putText(
                 img,
-                f'Data: {data_pair} saved',
-                (int(WIDTH * 0.7), int(HEIGHT * 0.9)),
+                f'Target: none',
+                (5, int(HEIGHT * 0.95)),
                 cv.FONT_HERSHEY_SIMPLEX,
-                0.8,
+                FONT_SCALE,
                 (0, 255, 215),
-                2,
+                FONT_THICKNESS,
             )
 
-    # display collecting information
-    if not collecting:
-        info = 'Press <space> to record the target position.'
-    else:
-        info = 'Match the arm and press <sapce> to record end-effector position.'
-    cv.putText(
-        img,
-        info,
-        (5, 40),
-        cv.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (0, 255, 215),
-        2,
-    )
+        if len(data_pair) > 0:
+            if len(data_pair) == 2:
+                cv.putText(
+                    img,
+                    f'Target: {data_pair}',
+                    (int(WIDTH * 0.7), int(HEIGHT * 0.9)),
+                    cv.FONT_HERSHEY_SIMPLEX,
+                    FONT_SCALE,
+                    (0, 255, 215),
+                    FONT_THICKNESS,
+                )
+            else:
+                cv.putText(
+                    img,
+                    f'Data: {data_pair} saved',
+                    (int(WIDTH * 0.55), int(HEIGHT * 0.9)),
+                    cv.FONT_HERSHEY_SIMPLEX,
+                    FONT_SCALE,
+                    (0, 0, 215),
+                    FONT_THICKNESS,
+                )
 
-    cv.imshow(window, img)
-    cv.imshow(panel, mid)
-    key = cv.waitKey(1)
+        # display collecting information
+        if not collecting:
+            info = 'Press <space> to record the target position.'
+        else:
+            info = 'Move arm and press <sapce> to record end-effector position.'
+        cv.putText(
+            img,
+            info,
+            (5, 40),
+            cv.FONT_HERSHEY_SIMPLEX,
+            FONT_SCALE,
+            (0, 255, 215),
+            FONT_THICKNESS,
+        )
 
-    # q for quit
-    if key == 113:
-        break
+        cv.imshow(window, img)
+        cv.imshow(panel, mid)
+        key = cv.waitKey(1)
 
-    # s for saving the configuration
-    elif key == 115:
-        detector.save('output.json')
+        # q for quit
+        if key == 113:
+            if collecting:
+                collecting = not collecting
+            else:
+                break
 
-    # h for setting home
-    elif key == 104:
-        arm.go_home()
+        # s for saving the configuration
+        elif key == 115:
+            detector.save('output.json')
 
-    # r for resetting home
-    elif key == 114:
-        arm.reset_home()
-
-    # <space> for collecting data
-    elif key == 32:
-        if collecting:
-            data_pair += arm_pos
-            assert len(data_pair) == 4
-            data_pair = ','.join([str(d) for d in data_pair])
-            with open(args.data, 'a') as f:
-                f.write(data_pair)
-                f.write('\n')
+        # h for setting home
+        elif key == 104:
             arm.go_home()
+
+        # r for resetting home
+        elif key == 114:
+            arm.reset_home()
+
+        # <space> for collecting data
+        elif key == 32:
+            if collecting:
+                data_pair += arm_pos
+                assert len(data_pair) == 5
+                data_pair = ','.join([str(d) for d in data_pair])
+                with open(args.data, 'a') as f:
+                    f.write(data_pair)
+                    f.write('\n')
+                arm.go_home()
+            else:
+                data_pair = [*obj_pos]
+            collecting = not collecting
+
         else:
-            data_pair = [*obj_pos]
-        collecting = not collecting
+            for param in [
+                'blur_kernel',
+                'n_dilations',
+                'dilation_kernel',
+                'erosion_kernel',
+                'n_erosions',
+                'n_objects',
+                'min_arc_length',
+                'max_arc_length',
+            ]:
+                detector.cfg[param] = cv.getTrackbarPos(param, panel)
 
-    else:
-        for param in [
-            'blur_kernel',
-            'n_dilations',
-            'dilation_kernel',
-            'erosion_kernel',
-            'n_erosions',
-            'n_objects',
-            'min_arc_length',
-            'max_arc_length',
-        ]:
-            detector.cfg[param] = cv.getTrackbarPos(param, panel)
+            detector.cfg['inversion'] = bool(
+                cv.getTrackbarPos('inversion', panel)
+            )
+            detector.cfg['roi'] = (
+                cv.getTrackbarPos('roi_width', panel) / 100.0,
+                cv.getTrackbarPos('roi_height', panel) / 100.0,
+            )
+            detector.cfg['lower_bound'] = (
+                cv.getTrackbarPos('lh', panel),
+                cv.getTrackbarPos('ls', panel),
+                cv.getTrackbarPos('lv', panel),
+            )
+            detector.cfg['upper_bound'] = (
+                cv.getTrackbarPos('uh', panel),
+                cv.getTrackbarPos('us', panel),
+                cv.getTrackbarPos('uv', panel),
+            )
 
-        detector.cfg['inversion'] = bool(
-            cv.getTrackbarPos('inversion', panel)
-        )
-        detector.cfg['roi'] = (
-            cv.getTrackbarPos('roi_width', panel) / 100.0,
-            cv.getTrackbarPos('roi_height', panel) / 100.0,
-        )
-        detector.cfg['lower_bound'] = (
-            cv.getTrackbarPos('lh', panel),
-            cv.getTrackbarPos('ls', panel),
-            cv.getTrackbarPos('lv', panel),
-        )
-        detector.cfg['upper_bound'] = (
-            cv.getTrackbarPos('uh', panel),
-            cv.getTrackbarPos('us', panel),
-            cv.getTrackbarPos('uv', panel),
-        )
+except KeyboardInterrupt:
+    print('Terminated.')
 
 cv.destroyAllWindows()
-if use_camera:
-    cap.release()
+video.close()

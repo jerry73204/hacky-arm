@@ -7,7 +7,7 @@ class Arm:
 
     def __init__(
         self,
-        home=(220, 0, 120, 9),
+        home=(220.0, 0.0, 135.0, 9.0),
         port=None,
         verbose=False
     ):
