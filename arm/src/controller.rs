@@ -155,7 +155,7 @@ impl Controller {
         JoinHandle<Fallible<()>>,
         broadcast::Sender<(DobotMessage, Instant)>,
     )> {
-        let mut viz_msg_tx = self.viz_msg_tx.clone();
+        let viz_msg_tx = self.viz_msg_tx.clone();
         let (dobot_tx, mut dobot_rx) = broadcast::channel(1);
         let mut dobot = Dobot::open(&self.config.dobot_device).await?;
         let config = self.config.clone();

@@ -75,6 +75,7 @@ struct VisualizerCache {
     color_frame: Option<Frame<frame_marker::Video>>,
     depth_frame: Option<Frame<frame_marker::Depth>>,
     image: Option<Mat>,
+    is_dobot_busy: bool,
 }
 
 impl VisualizerCache {
@@ -83,6 +84,7 @@ impl VisualizerCache {
             color_frame: None,
             depth_frame: None,
             image: None,
+            is_dobot_busy: true,
         }
     }
 }
@@ -152,7 +154,6 @@ impl Visualizer {
 
         let mut runtime = Runtime::new()?;
         let mut rate_meter = RateMeter::seconds();
-        let mut is_dobot_busy = true;
 
         loop {
             let msg = match runtime.block_on(self.msg_rx.recv()) {
@@ -214,8 +215,8 @@ impl Visualizer {
                     // }
                     self.cache.image = Some(image);
                 }
-                VisualizerMessage::DobotAvailable => is_dobot_busy = false,
-                VisualizerMessage::DobotBusy => is_dobot_busy = true,
+                VisualizerMessage::DobotAvailable => self.cache.is_dobot_busy = false,
+                VisualizerMessage::DobotBusy => self.cache.is_dobot_busy = true,
             }
 
             self.render()?;
@@ -276,7 +277,7 @@ impl Visualizer {
             ..
         } = self.config.visualizer;
 
-        if enable_video_viewer {
+        if enable_video_viewer && !self.cache.is_dobot_busy {
             if let Some(color_frame) = &self.cache.color_frame {
                 let color_image = color_frame.image()?;
                 let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
@@ -284,7 +285,7 @@ impl Visualizer {
             }
         }
 
-        if enable_depth_viewer {
+        if enable_depth_viewer && !self.cache.is_dobot_busy {
             if let Some(depth_frame) = &self.cache.depth_frame {
                 let depth_image = depth_frame.image()?;
                 let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
@@ -298,7 +299,7 @@ impl Visualizer {
             }
         }
 
-        if enable_detection_viewer {
+        if enable_detection_viewer && !self.cache.is_dobot_busy {
             if let Some(image) = &self.cache.image {
                 highgui::named_window("Detection", 0)?;
                 highgui::imshow("Detection", image)?;
