@@ -11,7 +11,7 @@ use std::{
 pub struct RealSenseMessage {
     pub depth_frame: Frame<frame_marker::Depth>,
     pub color_frame: Frame<frame_marker::Video>,
-    pub points: Arc<Vec<Arc<Point3<f32>>>>,
+    pub points: Arc<Vec<Point3<f32>>>,
     pub texture_coordinates: Vec<Point2<f32>>,
 }
 
@@ -21,7 +21,7 @@ pub enum VisualizerMessage {
     RealSenseData {
         depth_frame: Frame<frame_marker::Depth>,
         color_frame: Frame<frame_marker::Video>,
-        points: Arc<Vec<Arc<Point3<f32>>>>,
+        points: Arc<Vec<Point3<f32>>>,
         texture_coordinates: Vec<Point2<f32>>,
     },
     ObjectDetection(Arc<Detection>),

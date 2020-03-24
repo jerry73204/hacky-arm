@@ -92,7 +92,7 @@ pub struct Visualizer {
     config: Arc<Config>,
     msg_rx: broadcast::Receiver<Arc<VisualizerMessage>>,
     control_tx: broadcast::Sender<ControlMessage>,
-    pcd_tx: channel::Sender<Vec<(Arc<Point3<f32>>, Point3<f32>)>>,
+    pcd_tx: channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>,
     cache: VisualizerCache,
 }
 
@@ -106,13 +106,6 @@ impl Visualizer {
         let handle = tokio::spawn(async {
             let pcd_tx = {
                 let (pcd_tx, pcd_rx) = channel::bounded(4);
-
-                // std::thread::spawn(move || {
-                //     let state = PcdVizState::new(pcd_rx);
-                //     let mut window = Window::new("point cloud");
-                //     window.set_light(Light::StickToCamera);
-                //     window.render_loop(state);
-                // });
                 pcd_tx
             };
 
@@ -218,7 +211,7 @@ impl Visualizer {
         &mut self,
         depth_frame: Frame<frame_marker::Depth>,
         color_frame: Frame<frame_marker::Video>,
-        points: Arc<Vec<Arc<Point3<f32>>>>,
+        points: Arc<Vec<Point3<f32>>>,
         texture_coordinates: Vec<Point2<f32>>,
     ) -> Fallible<()> {
         let color_image: DynamicImage = color_frame.image()?.into();
@@ -226,7 +219,6 @@ impl Visualizer {
 
         let colored_points = points
             .iter()
-            .map(Arc::clone)
             .zip(texture_coordinates.into_iter())
             .map(|(point, texture_coordinate)| {
                 let [x, y]: [_; 2] = texture_coordinate.coords.into();
@@ -239,7 +231,7 @@ impl Visualizer {
                     Point3::new(0.1, 0.1, 0.1)
                 };
 
-                (point, color)
+                (point.clone(), color)
             })
             .collect::<Vec<_>>();
 

@@ -171,7 +171,9 @@ impl Controller {
                             let [a00, a01, b0, a10, a11, b1] = config.controller.coord_transform;
 
                             let (x, y, angle, depth) = {
-                                let Object { x, y, angle, depth, .. } = *obj;
+                                let Object {
+                                    x, y, angle, depth, ..
+                                } = *obj;
                                 let x = x as f64;
                                 let y = y as f64;
                                 let pos_x = a00 * x + a01 * y + b0;

@@ -103,7 +103,6 @@ impl RealSenseProvider {
                         let [x, y, z] = vertex.xyz;
                         Point3::new(x, y, z)
                     })
-                    .map(Arc::new)
                     .collect::<Vec<_>>();
                 Arc::new(pts)
             };

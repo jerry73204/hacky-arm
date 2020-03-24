@@ -38,7 +38,6 @@ pub struct Object {
     pub y: i32,
     pub angle: f32,
     pub polygon: LineString<f32>,
-    // pub points: Vec<Arc<Point3<f32>>>,
     pub depth: f32,
 }
 
