@@ -16,7 +16,7 @@ pub struct RealSenseMessage {
 }
 
 /// Message type received by visualizer.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VisualizerMessage {
     RealSenseData {
         depth_frame: Frame<frame_marker::Depth>,

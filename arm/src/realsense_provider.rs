@@ -18,14 +18,14 @@ use tokio::{sync::broadcast, task::JoinHandle};
 pub struct RealSenseProvider {
     config: Arc<Config>,
     msg_tx: broadcast::Sender<Arc<RealSenseMessage>>,
-    viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+    viz_msg_tx: broadcast::Sender<VisualizerMessage>,
 }
 
 impl RealSenseProvider {
     /// Starts the RealSense provider and returns a handle.
     pub fn start(
         config: Arc<Config>,
-        viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+        viz_msg_tx: broadcast::Sender<VisualizerMessage>,
     ) -> RealSenseHandle {
         let (msg_tx, msg_rx) = broadcast::channel(2);
 
@@ -127,7 +127,7 @@ impl RealSenseProvider {
                     points: Arc::clone(&points),
                     texture_coordinates: texture_coordinates.clone(),
                 };
-                if let Err(_) = self.viz_msg_tx.send(Arc::new(msg)) {
+                if let Err(_) = self.viz_msg_tx.send(msg) {
                     break;
                 }
             }

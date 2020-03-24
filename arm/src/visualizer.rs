@@ -92,7 +92,7 @@ impl VisualizerCache {
 /// The visualizer worker instance.
 pub struct Visualizer {
     config: Arc<Config>,
-    msg_rx: broadcast::Receiver<Arc<VisualizerMessage>>,
+    msg_rx: broadcast::Receiver<VisualizerMessage>,
     control_tx: broadcast::Sender<ControlMessage>,
     pcd_tx: Option<channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>>,
     cache: VisualizerCache,
@@ -161,7 +161,7 @@ impl Visualizer {
                 Err(broadcast::RecvError::Closed) => break,
                 Err(broadcast::RecvError::Lagged(_)) => continue,
             };
-            match &*msg {
+            match msg {
                 VisualizerMessage::RealSenseData {
                     depth_frame,
                     color_frame,
@@ -340,7 +340,7 @@ impl Visualizer {
 /// The handle type that can communicate with visualizer.
 #[derive(Debug)]
 pub struct VisualizerHandle {
-    pub msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+    pub msg_tx: broadcast::Sender<VisualizerMessage>,
     pub control_rx: broadcast::Receiver<ControlMessage>,
     pub handle: JoinHandle<Fallible<()>>,
 }

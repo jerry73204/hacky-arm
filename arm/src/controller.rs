@@ -13,7 +13,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::{sync::broadcast, sync::watch, task::JoinHandle};
+use tokio::{sync::broadcast, task::JoinHandle};
 
 struct ControllerCache {
     pub detector_msg: Option<Arc<DetectorMessage>>,
@@ -22,7 +22,7 @@ struct ControllerCache {
 pub struct Controller {
     config: Arc<Config>,
     detector_msg_rx: broadcast::Receiver<Arc<DetectorMessage>>,
-    viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+    viz_msg_tx: broadcast::Sender<VisualizerMessage>,
     control_rx: broadcast::Receiver<ControlMessage>,
     cache: Arc<Mutex<ControllerCache>>,
     enable_auto_grab: Arc<AtomicBool>,
@@ -33,7 +33,7 @@ impl Controller {
     pub async fn start(
         config: Arc<Config>,
         detector_msg_rx: broadcast::Receiver<Arc<DetectorMessage>>,
-        viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+        viz_msg_tx: broadcast::Sender<VisualizerMessage>,
         control_rx: broadcast::Receiver<ControlMessage>,
     ) -> Fallible<ControllerHandle> {
         let spawn_handle = tokio::spawn(async move {
@@ -169,7 +169,7 @@ impl Controller {
 
             loop {
                 // tell visaulizer the dobot is available
-                let _ = viz_msg_tx.send(Arc::new(VisualizerMessage::DobotAvailable));
+                let _ = viz_msg_tx.send(VisualizerMessage::DobotAvailable);
 
                 // wait for next command
                 let (msg, timestamp) = match dobot_rx.recv().await {
@@ -183,7 +183,7 @@ impl Controller {
                 }
 
                 // tell visaulizer the dobot is busy
-                let _ = viz_msg_tx.send(Arc::new(VisualizerMessage::DobotBusy));
+                let _ = viz_msg_tx.send(VisualizerMessage::DobotBusy);
 
                 match msg {
                     DobotMessage::GrabObject(obj) => {
@@ -204,17 +204,6 @@ impl Controller {
                             let y = y as f64;
                             let pos_x = a00 * x + a01 * y + b0;
                             let pos_y = a10 * x + a11 * y + b1;
-
-                            // let pos_x = (-y + 563) * (275 - 220) / (-345 + 563) + 220;
-                            // let pos_x = (-y as f32 + 563.0) * (275.0 - 220.0)
-                            //     / (-345.0 + 563.0)
-                            //     + 220.0
-                            //     + 5.0;
-                            // let pos_y = (-x + 765) * (50 - 0) / (-572 + 765) + 0;
-                            // let pos_y = (-x + 765) * (50 - 0) / (-572 + 765) + 0 - 10;
-                            // let pos_y = (-x as f32 + 765.0) * (50.0 - 0.0) / (-572.0 + 765.0)
-                            //     + 0.0
-                            //     + 10.0;
                             (pos_x as f32, pos_y as f32, angle, depth)
                         };
 

@@ -23,7 +23,7 @@ pub struct ObjectDetector {
     detector: Arc<Detector>,
     msg_tx: broadcast::Sender<Arc<DetectorMessage>>,
     realsense_msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
-    viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+    viz_msg_tx: broadcast::Sender<VisualizerMessage>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +45,7 @@ impl ObjectDetector {
     pub fn start(
         config: Arc<Config>,
         realsense_msg_rx: broadcast::Receiver<Arc<RealSenseMessage>>,
-        viz_msg_tx: broadcast::Sender<Arc<VisualizerMessage>>,
+        viz_msg_tx: broadcast::Sender<VisualizerMessage>,
     ) -> ObjectDetectorHandle {
         let Config {
             object_detector:
@@ -199,7 +199,7 @@ impl ObjectDetector {
             // send to visualizer
             {
                 let msg = VisualizerMessage::ObjectDetection(Arc::clone(&detection));
-                let _ = self.viz_msg_tx.send(Arc::new(msg));
+                let _ = self.viz_msg_tx.send(msg);
             }
 
             // broadcast message
