@@ -108,6 +108,10 @@ impl ObjectDetector {
                 if let Some(upper_bound) = upper_bound {
                     detector.upper_bound = upper_bound;
                 }
+
+                // turn off position drawing, move it to visualizer
+                detector.draw_position = false;
+
                 Arc::new(detector)
             };
 
@@ -165,17 +169,17 @@ impl ObjectDetector {
                             polygon,
                         } = obj;
                         let distance = depth_frame.distance(x as usize, y as usize)?;
-                        imgproc::put_text(
-                            &mut color_mat,
-                            &format!("distance {}", distance),
-                            Point::new(x, y + 15),
-                            imgproc::FONT_HERSHEY_SIMPLEX,
-                            0.5,
-                            Scalar::new(0., 0., 255., 0.),
-                            1,
-                            imgproc::LINE_8,
-                            false,
-                        )?;
+                        // imgproc::put_text(
+                        //     &mut color_mat,
+                        //     &format!("depth: {:.2}(m)", distance),
+                        //     Point::new(x + 20, y + 40),
+                        //     imgproc::FONT_HERSHEY_SIMPLEX,
+                        //     0.5,
+                        //     Scalar::new(0., 0., 255., 0.),
+                        //     1,
+                        //     imgproc::LINE_8,
+                        //     false,
+                        // )?;
                         let object = Object {
                             x,
                             y,

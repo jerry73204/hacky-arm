@@ -21,7 +21,15 @@ pub struct Config {
 /// The controller configuration.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ControllerConfig {
-    pub coord_transform: [f64; 6],
+    /// linear part of affine transformation, 2x2
+    pub linear_transform: [[f64; 2]; 2],
+
+    /// translation part of affine transformation, 2x1
+    pub translation: [f64; 2],
+
+    /// depth pair of (image, robot)
+    pub depth_image: [f32; 9],
+    pub depth_robot: [f32; 9],
 }
 
 /// The RealSense configuration.

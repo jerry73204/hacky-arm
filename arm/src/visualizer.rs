@@ -183,36 +183,59 @@ impl Visualizer {
                         "Object Detection Demo",
                         Point::new(5, 45),
                         imgproc::FONT_HERSHEY_SIMPLEX,
-                        1.0,
+                        0.9,
                         Scalar::new(0., 255., 0., 0.),
-                        3,
+                        2,
                         imgproc::LINE_8,
                         false,
                     )?;
-                    // for obj in detection.objects.iter() {
-                    //     imgproc::put_text(
-                    //         &mut image,
-                    //         &format!("{:.1}(deg)", obj.angle),
-                    //         Point::new(obj.x + 40, obj.y - 10),
-                    //         imgproc::FONT_HERSHEY_SIMPLEX,
-                    //         0.5,
-                    //         Scalar::new(0., 0., 255., 0.),
-                    //         2,
-                    //         imgproc::LINE_8,
-                    //         false,
-                    //     )?;
-                    //     imgproc::put_text(
-                    //         &mut image,
-                    //         &format!("{:.2}(m)", obj.distance),
-                    //         Point::new(obj.x + 40, obj.y + 15),
-                    //         imgproc::FONT_HERSHEY_SIMPLEX,
-                    //         0.5,
-                    //         Scalar::new(0., 0., 255., 0.),
-                    //         2,
-                    //         imgproc::LINE_8,
-                    //         false,
-                    //     )?;
-                    // }
+                    for obj in detection.objects.iter() {
+                        imgproc::put_text(
+                            &mut image,
+                            &format!("({}, {})", obj.x, obj.y),
+                            Point::new(obj.x + 30, obj.y - 30),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            1,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
+                        imgproc::put_text(
+                            &mut image,
+                            &format!("angle: {:.1}(deg)", obj.angle),
+                            Point::new(obj.x + 30, obj.y - 10),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            1,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
+                        imgproc::put_text(
+                            &mut image,
+                            &format!("depth: {:.2}(m)", obj.depth),
+                            Point::new(obj.x + 30, obj.y + 10),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            1,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
+                        let n_bricks = ((0.2 - obj.depth) / 0.06 * 7. + 8.).round() as i32;
+                        imgproc::put_text(
+                            &mut image,
+                            &format!("bricks: {}", n_bricks),
+                            Point::new(obj.x + 30, obj.y + 30),
+                            imgproc::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            Scalar::new(0., 0., 255., 0.),
+                            1,
+                            imgproc::LINE_8,
+                            false,
+                        )?;
+                    }
                     self.cache.image = Some(image);
                 }
                 VisualizerMessage::DobotAvailable => self.cache.is_dobot_busy = false,

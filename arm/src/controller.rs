@@ -185,6 +185,8 @@ impl Controller {
                 // tell visaulizer the dobot is busy
                 let _ = viz_msg_tx.send(VisualizerMessage::DobotBusy);
 
+                let home = (220.0, 0.0, 135.0, 9.0);
+
                 match msg {
                     DobotMessage::GrabObject(obj) => {
                         let now = Instant::now();
@@ -193,13 +195,13 @@ impl Controller {
                             continue;
                         }
 
-                        // TODO: adjuest position by object distance
-                        let [a00, a01, b0, a10, a11, b1] = config.controller.coord_transform;
+                        // TODO: adjust position by object distance
+                        let [[a00, a01], [a10, a11]] = config.controller.linear_transform;
+                        let [b0, b1] = config.controller.translation;
+
 
                         let (x, y, angle, depth) = {
-                            let Object {
-                                x, y, angle, depth, ..
-                            } = *obj;
+                            let Object {x, y, angle, depth, ..} = *obj;
                             let x = x as f64;
                             let y = y as f64;
                             let pos_x = a00 * x + a01 * y + b0;
@@ -207,47 +209,64 @@ impl Controller {
                             (pos_x as f32, pos_y as f32, angle, depth)
                         };
 
+                        let depth_range = config.controller.depth_image;
+                        let depth_robot = config.controller.depth_robot;
+
+                        let z: f32 = {
+                            let mut z: f32 = 0.;
+                            for i in 0..(depth_range.len() - 1) {
+                                if depth > (depth_range[i] + depth_range[i+1]) / 2. {
+                                    z = depth_robot[i];
+                                    break;
+                                }
+                            }
+                            if z == 0. { z = depth_robot[depth_range.len() - 1]; }
+                            z
+                        };
+
+                        // move to target position
                         dobot.release().await?.wait().await?;
-                        dobot.move_to(x, y, 70.0, angle + 9.0).await?.wait().await?;
-                        dobot
-                            .move_to(x, y, -30.0, angle + 9.0)
-                            .await?
-                            .wait()
-                            .await?;
+                        dobot.move_to(x, y, home.2 - 70., angle + home.3).await?.wait().await?;
+
+                        // go down
+                        // dobot.move_to(x, y, -30.0, angle + 9.0).await?.wait().await?;
+                        dobot.move_to(x, y, z, angle + 9.0).await?.wait().await?;
+
+                        // grip
                         dobot.grip().await?.wait().await?;
                         tokio::time::delay_for(Duration::from_secs(1)).await;
 
-                        dobot.move_to(230.0, 9.0, 25.0, 9.0).await?.wait().await?;
+                        // lift up
+                        dobot.move_to(x, y, home.2 - 110., angle + home.3).await?.wait().await?;
+                        // dobot.move_to(home.0, home.1, home.2 - 60., home.3).await?.wait().await?;
 
-                        dobot
-                            .move_to(160.0, -165.0, 30.0, 9.0)
-                            .await?
-                            .wait()
-                            .await?;
+                        // rotate 45(deg) clockwisely
+                        dobot.move_to(196., -160., 50.0, home.3).await?.wait().await?;
 
-                        dobot.move_to(0.0, -255.0, -30.0, 9.0).await?.wait().await?;
+                        // rotate 45(deg) clockwisely
+                        dobot.move_to(-4., -250., 0., home.3).await?.wait().await?;
+
+                        // release
                         dobot.release().await?.wait().await?;
                         tokio::time::delay_for(Duration::from_secs(1)).await;
-                        dobot.move_to(0.0, -255.0, 30.0, 9.0).await?.wait().await?;
 
-                        dobot
-                            .move_to(160.0, -165.0, 30.0, 9.0)
-                            .await?
-                            .wait()
-                            .await?;
-                        dobot.move_to(230.0, 9.0, 25.0, 9.0).await?.wait().await?;
+                        // rotate 45(deg) counterclockwisely
+                        // dobot.move_to(196., -160., 50.0, home.3).await?.wait().await?;
+                        dobot.move_to(176., -134., 86.0, home.3).await?.wait().await?;
 
-                        dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
+                        // rotate 45(deg) counterclockwisely
+                        dobot.move_to(home.0, home.1, home.2, home.3).await?.wait().await?;
 
+                        // wait for next motion
                         tokio::time::delay_for(Duration::from_secs(2)).await;
                         min_timestamp = Instant::now();
                     }
                     DobotMessage::Reset => {
                         dobot.set_home().await?.wait().await?;
-                        dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
+                        dobot.move_to(home.0, home.1, home.2, home.3).await?.wait().await?;
                     }
                     DobotMessage::Home => {
-                        dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
+                        dobot.move_to(home.0, home.1, home.2, home.3).await?.wait().await?;
                     }
                     DobotMessage::Noop(duration) => {
                         tokio::time::delay_for(duration).await;
