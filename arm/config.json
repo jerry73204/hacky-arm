@@ -18,17 +18,17 @@
     "params_file": "params/0325.json",
   },
   "visualizer": {
-      "enable_pcd_viewer": false,
+      "enable_pcd_viewer": true,
       "enable_video_viewer": false,
       "enable_depth_viewer": false,
       "enable_detection_viewer": true,
   },
   "controller": {
     "linear_transform": [
-      [-0.00289613, -0.4218366],
-      [-0.4217655,  -0.00144684]
+      [-0.0062625 , -0.42490554],
+      [-0.41722688, -0.00190964]
     ],
-    "translation": [372.3138, 169.35255],
+    "translation": [373.30157, 167.49185],
     "depth_image": [0.259 , 0.249 , 0.240 , 0.230 , 0.220 , 0.211 , 0.201 , 0.191 , 0.182] ,
     "depth_robot": [-32.0  , -32.0  , -32.0  , -25.0 , -14.0 , -8.0  , 4.0   , 13.0  , 23.0]
   }

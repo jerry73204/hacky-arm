@@ -223,7 +223,7 @@ impl Visualizer {
                             imgproc::LINE_8,
                             false,
                         )?;
-                        let n_bricks = ((0.2 - obj.depth) / 0.06 * 7. + 8.).round() as i32;
+                        let n_bricks = ((0.2 - obj.depth) / 0.06 * 7. + 8. - 0.1).round() as i32;
                         imgproc::put_text(
                             &mut image,
                             &format!("bricks: {}", n_bricks),

@@ -244,7 +244,7 @@ impl Controller {
                         dobot.move_to(196., -160., 50.0, home.3).await?.wait().await?;
 
                         // rotate 45(deg) clockwisely
-                        dobot.move_to(-4., -250., 0., home.3).await?.wait().await?;
+                        dobot.move_to(-4., -250., 20., home.3).await?.wait().await?;
 
                         // release
                         dobot.release().await?.wait().await?;
