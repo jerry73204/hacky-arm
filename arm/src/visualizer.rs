@@ -162,6 +162,7 @@ impl Visualizer {
                 Err(broadcast::RecvError::Closed) => break,
                 Err(broadcast::RecvError::Lagged(_)) => continue,
             };
+
             match msg {
                 VisualizerMessage::RealSenseData {
                     depth_frame,
@@ -241,7 +242,8 @@ impl Visualizer {
                 }
             }
 
-            self.render()?;
+            let is_dobot_busy = runtime.block_on(self.state.read()).is_dobot_busy;
+            self.render(is_dobot_busy)?;
 
             if let Some(rate) = rate_meter.tick(1) {
                 info!("message rate {} fps", rate);
@@ -291,14 +293,13 @@ impl Visualizer {
         Ok(())
     }
 
-    fn render(&self) -> Fallible<()> {
+    fn render(&mut self, is_dobot_busy: bool) -> Fallible<()> {
         let VisualizerConfig {
             enable_video_viewer,
             enable_depth_viewer,
             enable_detection_viewer,
             ..
         } = self.config.visualizer;
-        let is_dobot_busy = self.state.read().is_dobot_busy;
 
         if enable_video_viewer && !is_dobot_busy {
             if let Some(color_frame) = &self.cache.color_frame {

@@ -37,14 +37,6 @@ async fn main() -> Fallible<()> {
         termiate: false,
     });
 
-    // {
-    //     let state_clone = state.clone();
-    //     ctrlc::set_handler(move || {
-    //         state_clone.write().termiate = true;
-    //         info!("interrupted by user");
-    //     })?;
-    // }
-
     // parse arguments
     let args: Args = argh::from_env();
     let Args {

@@ -96,7 +96,7 @@ impl Controller {
                                 self.try_reset(&mut dobot_tx)?;
                             }
                             ControlMessage::ToggleAutoGrab => {
-                                let mut state = self.state.write();
+                                let mut state = self.state.write().await;
                                 let prev = state.enable_auto_grab;
                                 state.enable_auto_grab = !prev;
                                 if prev {
@@ -325,7 +325,7 @@ impl Controller {
                 // check if auto grab is enabled every a period of time
                 tokio::time::delay_for(std::time::Duration::from_millis(100)).await;
 
-                if !state.read().enable_auto_grab {
+                if !state.read().await.enable_auto_grab {
                     continue;
                 }
 

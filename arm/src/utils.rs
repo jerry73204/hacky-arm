@@ -8,10 +8,10 @@ use image::{Bgr, Bgra, Luma, Rgb, Rgba};
 use realsense_rust::Rs2Image;
 use std::{
     ops::{Deref, DerefMut},
-    sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    sync::{Arc, Mutex},
     time::Instant,
 };
-use tokio::sync::watch;
+use tokio::sync::{watch, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Debug)]
 pub struct WatchedObject<T> {
@@ -41,20 +41,19 @@ impl<T> WatchedObject<T> {
         }
     }
 
-    pub fn write<'a>(&'a self) -> UpdateHandle<'a, T> {
+    pub async fn write<'a>(&'a self) -> UpdateHandle<'a, T> {
         UpdateHandle {
             obj: self,
-            lock: self.object.write().unwrap(),
+            lock: self.object.write().await,
         }
     }
 
-    pub fn read<'a>(&'a self) -> RwLockReadGuard<'a, T> {
-        self.object.read().unwrap()
+    pub async fn read<'a>(&'a self) -> RwLockReadGuard<'a, T> {
+        self.object.read().await
     }
 
-    pub async fn watch<'a>(&'a mut self) -> Option<RwLockReadGuard<'a, T>> {
-        self.rx.recv().await?;
-        Some(self.object.read().unwrap())
+    pub async fn watch<'a>(&'a mut self) -> Option<()> {
+        self.rx.recv().await
     }
 }
 
@@ -228,10 +227,18 @@ mod tests {
                 let mut obj_clone = obj.clone();
                 async move {
                     tokio::spawn(async move {
-                        assert_eq!(obj_clone.watch().await.unwrap().0, 0);
-                        assert_eq!(obj_clone.watch().await.unwrap().0, 3);
-                        assert_eq!(obj_clone.watch().await.unwrap().0, 1);
-                        assert_eq!(obj_clone.watch().await.unwrap().0, 4);
+                        obj_clone.watch().await.unwrap();
+                        assert_eq!(obj_clone.read().await.0, 0);
+
+                        obj_clone.watch().await.unwrap();
+                        assert_eq!(obj_clone.read().await.0, 3);
+
+                        obj_clone.watch().await.unwrap();
+                        assert_eq!(obj_clone.read().await.0, 1);
+
+                        obj_clone.watch().await.unwrap();
+                        assert_eq!(obj_clone.read().await.0, 4);
+
                         Fallible::Ok(())
                     })
                     .await??;
@@ -244,13 +251,13 @@ mod tests {
             tokio::spawn(async move {
                 tokio::time::delay_for(Duration::from_millis(1000)).await;
 
-                obj.write().0 = 3;
+                obj.write().await.0 = 3;
                 tokio::time::delay_for(Duration::from_millis(200)).await;
 
-                obj.write().0 = 1;
+                obj.write().await.0 = 1;
                 tokio::time::delay_for(Duration::from_millis(200)).await;
 
-                obj.write().0 = 4;
+                obj.write().await.0 = 4;
                 tokio::time::delay_for(Duration::from_millis(200)).await;
             })
             .await?;
