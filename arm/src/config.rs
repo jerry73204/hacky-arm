@@ -10,12 +10,19 @@ use std::{
 /// The global configuration type.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
-    pub dobot_device: PathBuf,
+    pub dobot: DobotConfig,
     pub realsense: RealSenseConfig,
     #[serde(deserialize_with = "deserialize_object_detector")]
     pub object_detector: ObjectDetectorConfig,
     pub visualizer: VisualizerConfig,
     pub controller: ControllerConfig,
+}
+
+/// The Dobot configuration.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DobotConfig {
+    pub enabled: bool,
+    pub device: PathBuf,
 }
 
 /// The controller configuration.
