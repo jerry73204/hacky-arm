@@ -5,11 +5,7 @@ use crate::{
 };
 use failure::Fallible;
 use geo::LineString;
-use hacky_arm_common::opencv::{
-    core::{Point, Scalar, Vec3b},
-    imgproc,
-    prelude::*,
-};
+use hacky_arm_common::opencv::{core::Vec3b, prelude::*};
 use hacky_detection::Detector;
 use hacky_detection::Obj;
 use log::info;

@@ -25,8 +25,6 @@ pub enum VisualizerMessage {
         texture_coordinates: Vec<Point2<f32>>,
     },
     ObjectDetection(Arc<Detection>),
-    DobotAvailable,
-    DobotBusy,
 }
 
 /// Message type sent by object detector.

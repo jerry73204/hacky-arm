@@ -4,24 +4,19 @@ mod message;
 mod object_detector;
 mod processor;
 mod realsense_provider;
+mod state;
 mod utils;
 mod visualizer;
 
 use crate::{
     config::Config, controller::Controller, object_detector::ObjectDetector,
-    realsense_provider::RealSenseProvider, visualizer::Visualizer,
+    realsense_provider::RealSenseProvider, state::GlobalState, utils::WatchedObject,
+    visualizer::Visualizer,
 };
 use argh::FromArgs;
 use failure::Fallible;
-use lazy_static::lazy_static;
-use std::{
-    path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
-};
-
-lazy_static! {
-    static ref TERMINATE_FLAG: AtomicBool = AtomicBool::new(false);
-}
+use log::info;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(FromArgs, Debug, Clone)]
 /// An arm who learns the arm job.
@@ -35,11 +30,20 @@ struct Args {
 async fn main() -> Fallible<()> {
     pretty_env_logger::init();
 
-    // TODO
-    // ctrlc::set_handler(move || {
-    //     TERMINATE_FLAG.store(true, Ordering::SeqCst);
-    //     info!("interrupted by user");
-    // })?;
+    // init global state
+    let state = WatchedObject::new(GlobalState {
+        is_dobot_busy: false,
+        enable_auto_grab: false,
+        termiate: false,
+    });
+
+    // {
+    //     let state_clone = state.clone();
+    //     ctrlc::set_handler(move || {
+    //         state_clone.write().termiate = true;
+    //         info!("interrupted by user");
+    //     })?;
+    // }
 
     // parse arguments
     let args: Args = argh::from_env();
@@ -51,7 +55,7 @@ async fn main() -> Fallible<()> {
     let config = Arc::new(Config::open(config_path)?);
 
     // start visaulizer
-    let visualizer_handle = Visualizer::start(config.clone());
+    let visualizer_handle = Visualizer::start(config.clone(), state.clone());
 
     // start realsense provider
     let realsense_handle =
@@ -70,6 +74,7 @@ async fn main() -> Fallible<()> {
         detector_handle.msg_rx,
         visualizer_handle.msg_tx.clone(),
         visualizer_handle.control_rx,
+        state.clone(),
     )
     .await?;
 

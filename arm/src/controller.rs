@@ -2,19 +2,19 @@ use crate::{
     config::Config,
     message::{ControlMessage, DetectorMessage, DobotMessage, VisualizerMessage},
     object_detector::Object,
+    state::GlobalState,
+    utils::WatchedObject,
 };
 use dobot::Dobot;
 use failure::Fallible;
 use log::{info, warn};
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 use tokio::{sync::broadcast, task::JoinHandle};
 
+#[derive(Debug)]
 struct ControllerCache {
     pub detector_msg: Option<Arc<DetectorMessage>>,
 }
@@ -25,7 +25,7 @@ pub struct Controller {
     viz_msg_tx: broadcast::Sender<VisualizerMessage>,
     control_rx: broadcast::Receiver<ControlMessage>,
     cache: Arc<Mutex<ControllerCache>>,
-    enable_auto_grab: Arc<AtomicBool>,
+    state: WatchedObject<GlobalState>,
 }
 
 impl Controller {
@@ -35,6 +35,7 @@ impl Controller {
         detector_msg_rx: broadcast::Receiver<Arc<DetectorMessage>>,
         viz_msg_tx: broadcast::Sender<VisualizerMessage>,
         control_rx: broadcast::Receiver<ControlMessage>,
+        state: WatchedObject<GlobalState>,
     ) -> Fallible<ControllerHandle> {
         let spawn_handle = tokio::spawn(async move {
             let cache = ControllerCache { detector_msg: None };
@@ -43,8 +44,8 @@ impl Controller {
                 detector_msg_rx,
                 viz_msg_tx,
                 control_rx,
-                enable_auto_grab: Arc::new(AtomicBool::from(false)),
                 cache: Arc::new(Mutex::new(cache)),
+                state,
             };
             controller.run().await?;
             Ok(())
@@ -95,7 +96,9 @@ impl Controller {
                                 self.try_reset(&mut dobot_tx)?;
                             }
                             ControlMessage::ToggleAutoGrab => {
-                                let prev = self.enable_auto_grab.fetch_xor(true, Ordering::Relaxed);
+                                let mut state = self.state.write();
+                                let prev = state.enable_auto_grab;
+                                state.enable_auto_grab = !prev;
                                 if prev {
                                     info!("auto grabbing disbled");
                                 } else {
@@ -159,6 +162,7 @@ impl Controller {
         let (dobot_tx, mut dobot_rx) = broadcast::channel(1);
         let mut dobot = Dobot::open(&self.config.dobot_device).await?;
         let config = self.config.clone();
+        let state = self.state.clone();
 
         let handle = tokio::spawn(async move {
             info!("dobot worker started");
@@ -168,8 +172,7 @@ impl Controller {
             dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
 
             loop {
-                // tell visaulizer the dobot is available
-                let _ = viz_msg_tx.send(VisualizerMessage::DobotAvailable);
+                state.write().is_dobot_busy = false;
 
                 // wait for next command
                 let (msg, timestamp) = match dobot_rx.recv().await {
@@ -181,9 +184,7 @@ impl Controller {
                 if timestamp < Instant::now() - Duration::from_millis(100) {
                     continue;
                 }
-
-                // tell visaulizer the dobot is busy
-                let _ = viz_msg_tx.send(VisualizerMessage::DobotBusy);
+                state.write().is_dobot_busy = true;
 
                 let home = (220.0, 0.0, 135.0, 9.0);
 
@@ -316,7 +317,7 @@ impl Controller {
         &self,
         dobot_tx: broadcast::Sender<(DobotMessage, Instant)>,
     ) -> Fallible<JoinHandle<Fallible<()>>> {
-        let enable_auto_grab = self.enable_auto_grab.clone();
+        let state = self.state.clone();
         let cache_mutex = self.cache.clone();
 
         let handle = tokio::spawn(async move {
@@ -324,7 +325,7 @@ impl Controller {
                 // check if auto grab is enabled every a period of time
                 tokio::time::delay_for(std::time::Duration::from_millis(100)).await;
 
-                if !enable_auto_grab.load(Ordering::Relaxed) {
+                if !state.read().enable_auto_grab {
                     continue;
                 }
 

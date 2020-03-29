@@ -6,7 +6,83 @@ use hacky_arm_common::opencv::{
 };
 use image::{Bgr, Bgra, Luma, Rgb, Rgba};
 use realsense_rust::Rs2Image;
-use std::time::Instant;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    time::Instant,
+};
+use tokio::sync::watch;
+
+#[derive(Debug)]
+pub struct WatchedObject<T> {
+    tx: Arc<Mutex<watch::Sender<()>>>,
+    rx: watch::Receiver<()>,
+    object: Arc<RwLock<T>>,
+}
+
+impl<T> Clone for WatchedObject<T> {
+    fn clone(&self) -> Self {
+        Self {
+            tx: self.tx.clone(),
+            rx: self.rx.clone(),
+            object: self.object.clone(),
+        }
+    }
+}
+
+impl<T> WatchedObject<T> {
+    pub fn new(init: T) -> Self {
+        let (tx, rx) = watch::channel(());
+        let object = Arc::new(RwLock::new(init));
+        Self {
+            tx: Arc::new(Mutex::new(tx)),
+            rx,
+            object,
+        }
+    }
+
+    pub fn write<'a>(&'a self) -> UpdateHandle<'a, T> {
+        UpdateHandle {
+            obj: self,
+            lock: self.object.write().unwrap(),
+        }
+    }
+
+    pub fn read<'a>(&'a self) -> RwLockReadGuard<'a, T> {
+        self.object.read().unwrap()
+    }
+
+    pub async fn watch<'a>(&'a mut self) -> Option<RwLockReadGuard<'a, T>> {
+        self.rx.recv().await?;
+        Some(self.object.read().unwrap())
+    }
+}
+
+#[derive(Debug)]
+pub struct UpdateHandle<'a, T> {
+    obj: &'a WatchedObject<T>,
+    lock: RwLockWriteGuard<'a, T>,
+}
+
+impl<'a, T> Deref for UpdateHandle<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.lock.deref()
+    }
+}
+
+impl<'a, T> DerefMut for UpdateHandle<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.lock.deref_mut()
+    }
+}
+
+impl<'a, T> Drop for UpdateHandle<'a, T> {
+    fn drop(&mut self) {
+        let _ = self.obj.tx.lock().unwrap().broadcast(());
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RateMeter {
@@ -118,5 +194,74 @@ impl<'a> HackyTryFrom<Rs2Image<'a>> for Mat {
 
     fn try_from(from: Rs2Image<'a>) -> Fallible<Self> {
         HackyTryFrom::try_from(&from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn rate_meter() {
+        let mut meter = RateMeter::seconds();
+        assert_eq!(meter.tick(1), None);
+        assert_eq!(meter.tick(2), None);
+        assert_eq!(meter.tick(3), None);
+        std::thread::sleep(Duration::from_secs(1));
+        assert!(meter
+            .tick(0)
+            .map(|val| (val - 6.0).abs() <= 1e-3)
+            .unwrap_or(false));
+    }
+
+    #[tokio::test]
+    async fn watched_object() -> Fallible<()> {
+        struct MockedState(usize);
+
+        let n_watchers = 1;
+        let obj = WatchedObject::new(MockedState(0));
+
+        let watcher_futures = (0..n_watchers)
+            .into_iter()
+            .map(|_| {
+                let mut obj_clone = obj.clone();
+                async move {
+                    tokio::spawn(async move {
+                        assert_eq!(obj_clone.watch().await.unwrap().0, 0);
+                        assert_eq!(obj_clone.watch().await.unwrap().0, 3);
+                        assert_eq!(obj_clone.watch().await.unwrap().0, 1);
+                        assert_eq!(obj_clone.watch().await.unwrap().0, 4);
+                        Fallible::Ok(())
+                    })
+                    .await??;
+                    Fallible::Ok(())
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let sender_future = async move {
+            tokio::spawn(async move {
+                tokio::time::delay_for(Duration::from_millis(1000)).await;
+
+                obj.write().0 = 3;
+                tokio::time::delay_for(Duration::from_millis(200)).await;
+
+                obj.write().0 = 1;
+                tokio::time::delay_for(Duration::from_millis(200)).await;
+
+                obj.write().0 = 4;
+                tokio::time::delay_for(Duration::from_millis(200)).await;
+            })
+            .await?;
+            Fallible::Ok(())
+        };
+
+        futures::try_join!(
+            sender_future,
+            futures::future::try_join_all(watcher_futures),
+        )?;
+
+        Ok(())
     }
 }

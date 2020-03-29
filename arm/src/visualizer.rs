@@ -1,7 +1,8 @@
 use crate::{
     config::{Config, VisualizerConfig},
     message::{ControlMessage, VisualizerMessage},
-    utils::{HackyTryFrom, RateMeter},
+    state::GlobalState,
+    utils::{HackyTryFrom, RateMeter, WatchedObject},
 };
 use crossbeam::channel;
 use failure::Fallible;
@@ -75,7 +76,6 @@ struct VisualizerCache {
     color_frame: Option<Frame<frame_marker::Video>>,
     depth_frame: Option<Frame<frame_marker::Depth>>,
     image: Option<Mat>,
-    is_dobot_busy: bool,
 }
 
 impl VisualizerCache {
@@ -84,7 +84,6 @@ impl VisualizerCache {
             color_frame: None,
             depth_frame: None,
             image: None,
-            is_dobot_busy: true,
         }
     }
 }
@@ -96,16 +95,17 @@ pub struct Visualizer {
     control_tx: broadcast::Sender<ControlMessage>,
     pcd_tx: Option<channel::Sender<Vec<(Point3<f32>, Point3<f32>)>>>,
     cache: VisualizerCache,
+    state: WatchedObject<GlobalState>,
 }
 
 impl Visualizer {
     /// Starts visualizer and returns a handle.
-    pub fn start(config: Arc<Config>) -> VisualizerHandle {
+    pub fn start(config: Arc<Config>, state: WatchedObject<GlobalState>) -> VisualizerHandle {
         let (msg_tx, msg_rx) = broadcast::channel(2);
         let (control_tx, control_rx) = broadcast::channel(2);
         let cache = VisualizerCache::new();
 
-        let handle = tokio::spawn(async {
+        let handle = tokio::spawn(async move {
             let (pcd_tx, pcd_viewer_future) = if config.visualizer.enable_pcd_viewer {
                 let (pcd_tx, pcd_rx) = channel::bounded(4);
 
@@ -130,6 +130,7 @@ impl Visualizer {
                         control_tx,
                         pcd_tx,
                         cache,
+                        state,
                     };
                     visualizer.run()?;
                     Fallible::Ok(())
@@ -238,8 +239,6 @@ impl Visualizer {
                     }
                     self.cache.image = Some(image);
                 }
-                VisualizerMessage::DobotAvailable => self.cache.is_dobot_busy = false,
-                VisualizerMessage::DobotBusy => self.cache.is_dobot_busy = true,
             }
 
             self.render()?;
@@ -299,8 +298,9 @@ impl Visualizer {
             enable_detection_viewer,
             ..
         } = self.config.visualizer;
+        let is_dobot_busy = self.state.read().is_dobot_busy;
 
-        if enable_video_viewer && !self.cache.is_dobot_busy {
+        if enable_video_viewer && !is_dobot_busy {
             if let Some(color_frame) = &self.cache.color_frame {
                 let color_image = color_frame.image()?;
                 let color_mat: Mat = HackyTryFrom::try_from(&color_image)?;
@@ -308,7 +308,7 @@ impl Visualizer {
             }
         }
 
-        if enable_depth_viewer && !self.cache.is_dobot_busy {
+        if enable_depth_viewer && !is_dobot_busy {
             if let Some(depth_frame) = &self.cache.depth_frame {
                 let depth_image = depth_frame.image()?;
                 let depth_mat: Mat = HackyTryFrom::try_from(&depth_image)?;
@@ -322,7 +322,7 @@ impl Visualizer {
             }
         }
 
-        if enable_detection_viewer && !self.cache.is_dobot_busy {
+        if enable_detection_viewer && !is_dobot_busy {
             if let Some(image) = &self.cache.image {
                 highgui::named_window("Detection", 0)?;
                 highgui::imshow("Detection", image)?;
