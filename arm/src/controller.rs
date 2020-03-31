@@ -173,13 +173,16 @@ impl Controller {
                 let mut dobot = Dobot::open(&config.dobot.device).await?;
                 let mut min_timestamp = Instant::now();
 
-                let move_to = |facing, x, y, z, r | {
-                    if facing {
-                        dobot.move_to(x, y, z, r).await?.wait().await?;
-                    } else {
-                        dobot.move_to(y, x, z, r).await?.wait().await?;
+                let move_to = |mut dobot: Dobot, facing, x, y, z, r | {
+                    async move {
+                        if facing {
+                            dobot.move_to(x, y, z, r).await?.wait().await?;
+                        } else {
+                            dobot.move_to(y, -x, z, r + 90).await?.wait().await?;
+                        }
+                        Fallible::Ok(dobot)
                     }
-                }
+                };
 
                 // move to home
                 dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
@@ -240,58 +243,65 @@ impl Controller {
                                 z
                             };
 
+                            let facing = self.state.read().await.facing;
+                            dobot = move_to(dobot, facing, 220.0, 0.0, 135.0, 9.0).await?;
+
                             // move to target position
                             dobot.release().await?.wait().await?;
-                            dobot
-                                .move_to(x, y, home.2 - 70., angle + home.3)
-                                .await?
-                                .wait()
-                                .await?;
+                            dobot = move_to(dobot, facing, x, y, home.2 - 70., angle + home.3).await?;
+                            // dobot
+                            //     .move_to(x, y, home.2 - 70., angle + home.3)
+                            //     .await?
+                            //     .wait()
+                            //     .await?;
 
                             // go down
-                            // dobot.move_to(x, y, -30.0, angle + 9.0).await?.wait().await?;
-                            dobot.move_to(x, y, z, angle + 9.0).await?.wait().await?;
+                            dobot = move_to(dobot, facing, x, y, z, angle + 9.0).await?;
+                            // dobot.move_to(x, y, z, angle + 9.0).await?.wait().await?;
 
                             // grip
                             dobot.grip().await?.wait().await?;
                             tokio::time::delay_for(Duration::from_secs(1)).await;
 
                             // lift up
-                            dobot
-                                .move_to(x, y, home.2 - 110., angle + home.3)
-                                .await?
-                                .wait()
-                                .await?;
-                            // dobot.move_to(home.0, home.1, home.2 - 60., home.3).await?.wait().await?;
+                            dobot = move_to(dobot, facing, x, y, home.2 - 110., angle + home.3).await?;
+                            // dobot
+                            //     .move_to(x, y, home.2 - 110., angle + home.3)
+                            //     .await?
+                            //     .wait()
+                            //     .await?;
 
                             // rotate 45(deg) clockwisely
-                            dobot
-                                .move_to(196., -160., 50.0, home.3)
-                                .await?
-                                .wait()
-                                .await?;
+                            dobot = move_to(dobot, facing, 196., -160., 50.0, home.3).await?;
+                            // dobot
+                            //     .move_to(196., -160., 50.0, home.3)
+                            //     .await?
+                            //     .wait()
+                            //     .await?;
 
                             // rotate 45(deg) clockwisely
-                            dobot.move_to(-4., -250., 20., home.3).await?.wait().await?;
+                            dobot = move_to(dobot, facing, -4., -250., 20., home.3).await?;
+                            // dobot.move_to(-4., -250., 20., home.3).await?.wait().await?;
 
                             // release
                             dobot.release().await?.wait().await?;
                             tokio::time::delay_for(Duration::from_secs(1)).await;
 
                             // rotate 45(deg) counterclockwisely
-                            // dobot.move_to(196., -160., 50.0, home.3).await?.wait().await?;
-                            dobot
-                                .move_to(176., -134., 86.0, home.3)
-                                .await?
-                                .wait()
-                                .await?;
+                            dobot = move_to(dobot, facing, 176., -134., 86.0, home.3).await?;
+                            // dobot
+                            //     .move_to(176., -134., 86.0, home.3)
+                            //     .await?
+                            //     .wait()
+                            //     .await?;
 
                             // rotate 45(deg) counterclockwisely
-                            dobot
-                                .move_to(home.0, home.1, home.2, home.3)
-                                .await?
-                                .wait()
-                                .await?;
+                            dobot = move_to(dobot, facing, home.0, home.1, home.2, home.3).await?;
+                            // dobot
+                            //     .move_to(home.0, home.1, home.2, home.3)
+                            //     .await?
+                            //     .wait()
+                            //     .await?;
 
                             // wait for next motion
                             tokio::time::delay_for(Duration::from_secs(2)).await;
@@ -313,19 +323,9 @@ impl Controller {
                                 .await?;
                         }
                         DobotMessage::Switch => {
-                            if state.read().await.facing {
-                                dobot
-                                    .move_to(home.0, home.1, home.2, home.3)
-                                    .await?
-                                    .wait()
-                                    .await?;
-                            } else {
-                                dobot
-                                    .move_to(home.0, home.1, home.2, home.3)
-                                    .await?
-                                    .wait()
-                                    .await?;
-                            }
+                            let facing = self.state.read().await.facing;
+                            dobot = move_to(dobot, facing, 196., -160., 50.0, home.3).await?;
+                            dobot = move_to(dobot, facing, home.0, home.1, home.2, home.3).await?;
                         }
                         DobotMessage::Noop(duration) => {
                             tokio::time::delay_for(duration).await;
