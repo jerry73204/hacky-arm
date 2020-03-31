@@ -41,6 +41,7 @@ pub enum ControlMessage {
     Home,
     Reset,
     ToggleAutoGrab,
+    ToggleCycleGrab,
 }
 
 /// Message type produced by RealSense provider.
@@ -50,4 +51,5 @@ pub enum DobotMessage {
     Home,
     Reset,
     Noop(Duration),
+    Switch,
 }

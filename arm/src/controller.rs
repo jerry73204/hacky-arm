@@ -95,6 +95,10 @@ impl Controller {
                             ControlMessage::Reset => {
                                 self.try_reset(&mut dobot_tx)?;
                             }
+                            ControlMessage::ToggleCycleGrab => {
+                                let mut state = self.state.write().await;
+                                state.facing = !state.facing;
+                            }
                             ControlMessage::ToggleAutoGrab => {
                                 let mut state = self.state.write().await;
                                 let prev = state.enable_auto_grab;
@@ -169,6 +173,14 @@ impl Controller {
                 let mut dobot = Dobot::open(&config.dobot.device).await?;
                 let mut min_timestamp = Instant::now();
 
+                let move_to = |facing, x, y, z, r | {
+                    if facing {
+                        dobot.move_to(x, y, z, r).await?.wait().await?;
+                    } else {
+                        dobot.move_to(y, x, z, r).await?.wait().await?;
+                    }
+                }
+
                 // move to home
                 dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
 
@@ -197,7 +209,6 @@ impl Controller {
                                 continue;
                             }
 
-                            // TODO: adjust position by object distance
                             let [[a00, a01], [a10, a11]] = config.controller.linear_transform;
                             let [b0, b1] = config.controller.translation;
 
@@ -301,6 +312,21 @@ impl Controller {
                                 .wait()
                                 .await?;
                         }
+                        DobotMessage::Switch => {
+                            if state.read().await.facing {
+                                dobot
+                                    .move_to(home.0, home.1, home.2, home.3)
+                                    .await?
+                                    .wait()
+                                    .await?;
+                            } else {
+                                dobot
+                                    .move_to(home.0, home.1, home.2, home.3)
+                                    .await?
+                                    .wait()
+                                    .await?;
+                            }
+                        }
                         DobotMessage::Noop(duration) => {
                             tokio::time::delay_for(duration).await;
                         }
@@ -359,6 +385,7 @@ impl Controller {
         let cache_mutex = self.cache.clone();
 
         let handle = tokio::spawn(async move {
+            let mut counter = 0;
             loop {
                 // check if auto grab is enabled every a period of time
                 tokio::time::delay_for(std::time::Duration::from_millis(100)).await;
@@ -371,15 +398,28 @@ impl Controller {
                 if let Some(msg) = cache.detector_msg.take() {
                     match msg.detection.objects.first() {
                         Some(obj) => {
+                            counter = 0;
                             let dobot_msg = DobotMessage::GrabObject(obj.clone());
                             if let Err(_) = dobot_tx.send((dobot_msg, Instant::now())) {
                                 break;
                             }
                         }
                         None => {
-                            let dobot_msg = DobotMessage::Noop(Duration::from_secs(3));
-                            if let Err(_) = dobot_tx.send((dobot_msg, Instant::now())) {
-                                break;
+
+                            let state = self.state.read().await;
+                            if ! state.is_dobot_busy {
+                                counter += 1;
+                                let dobot_msg = if counter <= 2 {
+                                    DobotMessage::Noop(Duration::from_secs(3))
+                                } else {
+                                    counter = 0;
+                                    let mut state = self.state.write().await;
+                                    state.facing = !state.facing;
+                                    DobotMessage::Switch
+                                }
+                                if let Err(_) = dobot_tx.send((dobot_msg, Instant::now())) {
+                                    break;
+                                }
                             }
                             warn!("no objects detected");
                         }

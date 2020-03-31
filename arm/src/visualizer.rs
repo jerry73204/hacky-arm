@@ -342,6 +342,11 @@ impl Visualizer {
                 info!("Set home!");
                 self.control_tx.send(ControlMessage::Home).unwrap();
             }
+            116 => {
+                // t
+                info!("Toggle two-facing grab.");
+                self.control_tx.send(ControlMessage::SwitchFacing).unwrap();
+            }
             114 => {
                 // r
                 info!("Reset!");
