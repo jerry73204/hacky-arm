@@ -243,7 +243,8 @@ impl Visualizer {
             }
 
             let is_dobot_busy = runtime.block_on(self.state.read()).is_dobot_busy;
-            self.render(is_dobot_busy)?;
+            // self.render(is_dobot_busy)?;
+            self.render(false)?;
 
             if let Some(rate) = rate_meter.tick(1) {
                 info!("message rate {} fps", rate);
@@ -345,7 +346,7 @@ impl Visualizer {
             116 => {
                 // t
                 info!("Toggle two-facing grab.");
-                self.control_tx.send(ControlMessage::SwitchFacing).unwrap();
+                self.control_tx.send(ControlMessage::Switch).unwrap();
             }
             114 => {
                 // r

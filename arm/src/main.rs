@@ -35,7 +35,7 @@ async fn main() -> Fallible<()> {
         is_dobot_busy: false,
         enable_auto_grab: false,
         termiate: false,
-        facing: false,
+        facing: true,
     });
 
     // parse arguments

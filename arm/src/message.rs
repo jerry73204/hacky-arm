@@ -41,7 +41,7 @@ pub enum ControlMessage {
     Home,
     Reset,
     ToggleAutoGrab,
-    ToggleCycleGrab,
+    Switch,
 }
 
 /// Message type produced by RealSense provider.

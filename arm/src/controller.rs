@@ -84,7 +84,6 @@ impl Controller {
                             Err(broadcast::RecvError::Closed) => break,
                         };
 
-
                         match msg {
                             ControlMessage::Enter => {
                                 self.try_grab_object(&mut dobot_tx).await?;
@@ -95,9 +94,12 @@ impl Controller {
                             ControlMessage::Reset => {
                                 self.try_reset(&mut dobot_tx)?;
                             }
-                            ControlMessage::ToggleCycleGrab => {
-                                let mut state = self.state.write().await;
-                                state.facing = !state.facing;
+                            ControlMessage::Switch => {
+                                if !self.state.read().await.is_dobot_busy {
+                                    let mut state = self.state.write().await;
+                                    state.facing = !state.facing;
+                                    let _ = dobot_tx.send((DobotMessage::Switch, Instant::now()));
+                                }
                             }
                             ControlMessage::ToggleAutoGrab => {
                                 let mut state = self.state.write().await;
@@ -178,7 +180,7 @@ impl Controller {
                         if facing {
                             dobot.move_to(x, y, z, r).await?.wait().await?;
                         } else {
-                            dobot.move_to(y, -x, z, r + 90).await?.wait().await?;
+                            dobot.move_to(-y, -x, z, r - 90.).await?.wait().await?;
                         }
                         Fallible::Ok(dobot)
                     }
@@ -186,6 +188,8 @@ impl Controller {
 
                 // move to home
                 dobot.move_to(220.0, 0.0, 135.0, 9.0).await?.wait().await?;
+
+                let mut brick_counter = 0;
 
                 loop {
                     state.write().await.is_dobot_busy = false;
@@ -215,7 +219,7 @@ impl Controller {
                             let [[a00, a01], [a10, a11]] = config.controller.linear_transform;
                             let [b0, b1] = config.controller.translation;
 
-                            let (x, y, angle, depth) = {
+                            let (x, mut y, angle, depth) = {
                                 let Object {
                                     x, y, angle, depth, ..
                                 } = *obj;
@@ -243,21 +247,19 @@ impl Controller {
                                 z
                             };
 
-                            let facing = self.state.read().await.facing;
+                            let facing = state.read().await.facing;
                             dobot = move_to(dobot, facing, 220.0, 0.0, 135.0, 9.0).await?;
+
+                            if !facing {
+                                y = -y;
+                            }
 
                             // move to target position
                             dobot.release().await?.wait().await?;
                             dobot = move_to(dobot, facing, x, y, home.2 - 70., angle + home.3).await?;
-                            // dobot
-                            //     .move_to(x, y, home.2 - 70., angle + home.3)
-                            //     .await?
-                            //     .wait()
-                            //     .await?;
 
                             // go down
                             dobot = move_to(dobot, facing, x, y, z, angle + 9.0).await?;
-                            // dobot.move_to(x, y, z, angle + 9.0).await?.wait().await?;
 
                             // grip
                             dobot.grip().await?.wait().await?;
@@ -265,23 +267,15 @@ impl Controller {
 
                             // lift up
                             dobot = move_to(dobot, facing, x, y, home.2 - 110., angle + home.3).await?;
-                            // dobot
-                            //     .move_to(x, y, home.2 - 110., angle + home.3)
-                            //     .await?
-                            //     .wait()
-                            //     .await?;
 
                             // rotate 45(deg) clockwisely
                             dobot = move_to(dobot, facing, 196., -160., 50.0, home.3).await?;
-                            // dobot
-                            //     .move_to(196., -160., 50.0, home.3)
-                            //     .await?
-                            //     .wait()
-                            //     .await?;
 
                             // rotate 45(deg) clockwisely
-                            dobot = move_to(dobot, facing, -4., -250., 20., home.3).await?;
-                            // dobot.move_to(-4., -250., 20., home.3).await?.wait().await?;
+                            let x_shift = (brick_counter / 2 - 1) as f32 * 75.;
+                            let y_shift = (brick_counter % 2 - 1) as f32 * 60. + 30.;
+                            brick_counter = (brick_counter + 1) % 6;
+                            dobot = move_to(dobot, facing, -4. + x_shift, -250. + y_shift, -15., home.3).await?;
 
                             // release
                             dobot.release().await?.wait().await?;
@@ -289,25 +283,16 @@ impl Controller {
 
                             // rotate 45(deg) counterclockwisely
                             dobot = move_to(dobot, facing, 176., -134., 86.0, home.3).await?;
-                            // dobot
-                            //     .move_to(176., -134., 86.0, home.3)
-                            //     .await?
-                            //     .wait()
-                            //     .await?;
 
                             // rotate 45(deg) counterclockwisely
                             dobot = move_to(dobot, facing, home.0, home.1, home.2, home.3).await?;
-                            // dobot
-                            //     .move_to(home.0, home.1, home.2, home.3)
-                            //     .await?
-                            //     .wait()
-                            //     .await?;
 
                             // wait for next motion
                             tokio::time::delay_for(Duration::from_secs(2)).await;
                             min_timestamp = Instant::now();
                         }
                         DobotMessage::Reset => {
+                            state.write().await.facing = true;
                             dobot.set_home().await?.wait().await?;
                             dobot
                                 .move_to(home.0, home.1, home.2, home.3)
@@ -316,14 +301,11 @@ impl Controller {
                                 .await?;
                         }
                         DobotMessage::Home => {
-                            dobot
-                                .move_to(home.0, home.1, home.2, home.3)
-                                .await?
-                                .wait()
-                                .await?;
+                            let facing = state.read().await.facing;
+                            dobot = move_to(dobot, facing, home.0, home.1, home.2, home.3).await?;
                         }
                         DobotMessage::Switch => {
-                            let facing = self.state.read().await.facing;
+                            let facing = state.read().await.facing;
                             dobot = move_to(dobot, facing, 196., -160., 50.0, home.3).await?;
                             dobot = move_to(dobot, facing, home.0, home.1, home.2, home.3).await?;
                         }
@@ -363,6 +345,10 @@ impl Controller {
                             info!("home command");
                             tokio::time::delay_for(Duration::from_secs(1)).await;
                         }
+                        DobotMessage::Switch => {
+                            info!("switch command");
+                            tokio::time::delay_for(Duration::from_secs(1)).await;
+                        }
                         DobotMessage::Noop(duration) => {
                             tokio::time::delay_for(duration).await;
                         }
@@ -394,8 +380,11 @@ impl Controller {
                     continue;
                 }
 
-                let mut cache = cache_mutex.lock().unwrap();
-                if let Some(msg) = cache.detector_msg.take() {
+                let detector_msg = {
+                    let mut cache = cache_mutex.lock().unwrap();
+                    cache.detector_msg.take()
+                };
+                if let Some(msg) = detector_msg {
                     match msg.detection.objects.first() {
                         Some(obj) => {
                             counter = 0;
@@ -405,18 +394,16 @@ impl Controller {
                             }
                         }
                         None => {
-
-                            let state = self.state.read().await;
-                            if ! state.is_dobot_busy {
+                            if ! state.read().await.is_dobot_busy {
                                 counter += 1;
                                 let dobot_msg = if counter <= 2 {
                                     DobotMessage::Noop(Duration::from_secs(3))
                                 } else {
                                     counter = 0;
-                                    let mut state = self.state.write().await;
-                                    state.facing = !state.facing;
+                                    let mut writable_state = state.write().await;
+                                    writable_state.facing = !writable_state.facing;
                                     DobotMessage::Switch
-                                }
+                                };
                                 if let Err(_) = dobot_tx.send((dobot_msg, Instant::now())) {
                                     break;
                                 }
