@@ -1,0 +1,28 @@
+[Desktop Entry]
+
+# The type as listed above
+Type=Application
+
+# The version of the desktop entry specification to which this file complies
+Version=1.0
+
+# The name of the application
+Name=啟動手臂
+
+# A comment which can/will be used as a tooltip
+Comment=喚醒 Dobot 手臂
+
+# The path to the folder in which the executable is run
+Path=/home/jetbot/hacky-arm/arm
+
+# The executable of the application, possibly with arguments.
+Exec=sh -c 'export LD_LIBRARY_PATH=/opt/opencv4.2.0/lib && export RUST_LOG=info && export RUST_BACKTRACE=1 && /home/jetbot/hacky-arm/arm/target/release/hacky-arm'
+
+# The name of the icon that will be used to display this entry
+# Icon=
+
+# Describes whether this application needs to be run in a terminal or not
+Terminal=true
+
+# Describes the categories in which this entry should be shown
+# Categories=
