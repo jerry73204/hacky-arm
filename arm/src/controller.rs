@@ -175,7 +175,7 @@ impl Controller {
                 let mut dobot = Dobot::open(&config.dobot.device).await?;
                 let mut min_timestamp = Instant::now();
 
-                let move_to = |mut dobot: Dobot, facing, x, y, z, r | {
+                let move_to = |mut dobot: Dobot, facing, x, y, z, r| {
                     async move {
                         if facing {
                             dobot.move_to(x, y, z, r).await?.wait().await?;
@@ -256,7 +256,8 @@ impl Controller {
 
                             // move to target position
                             dobot.release().await?.wait().await?;
-                            dobot = move_to(dobot, facing, x, y, home.2 - 70., angle + home.3).await?;
+                            dobot =
+                                move_to(dobot, facing, x, y, home.2 - 70., angle + home.3).await?;
 
                             // go down
                             dobot = move_to(dobot, facing, x, y, z, angle + 9.0).await?;
@@ -266,7 +267,8 @@ impl Controller {
                             tokio::time::delay_for(Duration::from_secs(1)).await;
 
                             // lift up
-                            dobot = move_to(dobot, facing, x, y, home.2 - 110., angle + home.3).await?;
+                            dobot =
+                                move_to(dobot, facing, x, y, home.2 - 110., angle + home.3).await?;
 
                             // rotate 45(deg) clockwisely
                             dobot = move_to(dobot, facing, 196., -160., 50.0, home.3).await?;
@@ -275,7 +277,15 @@ impl Controller {
                             let x_shift = (brick_counter / 2 - 1) as f32 * 75.;
                             let y_shift = (brick_counter % 2 - 1) as f32 * 60. + 30.;
                             brick_counter = (brick_counter + 1) % 6;
-                            dobot = move_to(dobot, facing, -4. + x_shift, -250. + y_shift, -15., home.3).await?;
+                            dobot = move_to(
+                                dobot,
+                                facing,
+                                -4. + x_shift,
+                                -250. + y_shift,
+                                -15.,
+                                home.3,
+                            )
+                            .await?;
 
                             // release
                             dobot.release().await?.wait().await?;
@@ -394,7 +404,7 @@ impl Controller {
                             }
                         }
                         None => {
-                            if ! state.read().await.is_dobot_busy {
+                            if !state.read().await.is_dobot_busy {
                                 counter += 1;
                                 let dobot_msg = if counter <= 2 {
                                     DobotMessage::Noop(Duration::from_secs(3))
