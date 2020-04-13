@@ -275,7 +275,8 @@ impl Controller {
                             let x_shift = (brick_counter / 2 - 1) as f32 * 75.;
                             let y_shift = (brick_counter % 2 - 1) as f32 * 60. + 30.;
                             brick_counter = (brick_counter + 1) % 6;
-                            dobot = move_to(dobot, facing, -4. + x_shift, -250. + y_shift, -15., home.3).await?;
+                            let transpose = if facing { -90. } else { 90. };
+                            dobot = move_to(dobot, facing, -4. + x_shift, -250. + y_shift, -15., home.3 + transpose).await?;
 
                             // release
                             dobot.release().await?.wait().await?;
