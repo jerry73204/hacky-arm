@@ -58,8 +58,8 @@ def do_nothing(x):
 panel = 'panel'
 cv.namedWindow(panel)
 cv.moveWindow(panel, 1020, 60)
-cv.createTrackbar('lh', panel, detector.cfg['lower_bound'][0], 255, do_nothing)
-cv.createTrackbar('uh', panel, detector.cfg['upper_bound'][0], 255, do_nothing)
+cv.createTrackbar('lh', panel, detector.cfg['lower_bound'][0], 179, do_nothing)
+cv.createTrackbar('uh', panel, detector.cfg['upper_bound'][0], 179, do_nothing)
 cv.createTrackbar('ls', panel, detector.cfg['lower_bound'][1], 255, do_nothing)
 cv.createTrackbar('us', panel, detector.cfg['upper_bound'][1], 255, do_nothing)
 cv.createTrackbar('lv', panel, detector.cfg['lower_bound'][2], 255, do_nothing)
