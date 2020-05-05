@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import random
 import torch
 from torch.optim import Adam
 import argparse
@@ -19,6 +20,7 @@ with open(args.data) as f:
         for line in f
     ]
 
+random.shuffle(rows)
 data_x = torch.tensor([[float(r) for r in row[:2]] for row in rows])
 mean_x = torch.mean(data_x, dim=0)
 data_x -= mean_x

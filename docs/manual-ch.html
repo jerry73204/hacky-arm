@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.10">
-<meta name="author" content="== Overview">
+<meta name="author" content="林祥瑞, 袁佑緣">
 <title>The Hacky Robot Arm Project</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -441,110 +441,108 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <h1>The Hacky Robot Arm Project</h1>
 <div class="details">
-<span id="author" class="author">Hsiang-Jui Lin, Yu-Yuan Yuan</span><br>
+<span id="author" class="author">林祥瑞, 袁佑緣</span><br>
 </div>
 </div>
 <div id="content">
-<div id="preamble">
+<div class="sect1">
+<h2 id="_專題介紹">專題介紹</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The project aims to unleash the power of the Dobot Magician arm with the Intel RealSense D435 depth sensor.
-With our specially designed algorithm, the robot arm is able to grab the object without human intervention
-and judge the depth image from RealSensoe sensor to adjust the pose.</p>
+<p>本專題主要使用Dobot Magician機械手臂結合Intel RealSense D435深度感測器。得益於精巧的演算法，我們的機械手臂
+可以不需要任何人為操作即可自行夾取物件，並且透過深度感測器來適度地調整位置。</p>
 </div>
 <div class="paragraph">
-<p>Our project delivers the following items:</p>
+<p>本專題由以下幾項要素所構成：</p>
 </div>
 <div class="dlist">
 <dl>
-<dt class="hdlist1">Core Controller</dt>
+<dt class="hdlist1">核心控制器</dt>
 <dd>
-<p>The program scans the video and depth video in real-time. It allows users to issue commands to grab objects either manually or automatically.<br>
-It features <strong>real-time object detection</strong>, <strong>object depth estimation</strong>, and <strong>point cloud visualization</strong>.<br>
-It is highly configurable. Users can tweak the parameters for object detection and robot controller.</p>
+<p>程式會即時接收彩色與深度影像。並支援讓使用者調整手動或自動夾取的功能。我們目前實做的特點有
+<strong>即時物件辨識</strong>， <strong>物件深度估計</strong> 以及 <strong>點雲資料視覺化</strong>。<br>
+此外，本程式也支援參數調整，使用者可以根據我們的輔助程式來適當微調物件偵測以及機器手臂的控制。</p>
 </dd>
-<dt class="hdlist1">Object Detector Tweaking Tool</dt>
+<dt class="hdlist1">物件偵測參數調整工具</dt>
 <dd>
-<p>Since the core controller relies on image processing to determine the position of the object.<br>
-The utility program lets users tweak the parameters, and preview the detection performance interactively.<br>
-The output parameters can be directly loaded by the core controller.</p>
+<p>由於我們的核心控制器主要是基於影像處理來找尋物件的位置，實務上可以藉由工具程式來讓使用者對於不同的物件
+做細部的微調，並且支援人機界面來即時查看物件辨識的結果，最後調整的參數亦可以直接匯入主程式當中。</p>
 </dd>
-<dt class="hdlist1">Camera to Robot Measurement Tool</dt>
+<dt class="hdlist1">攝影鏡頭與機器人間的轉換測量工具</dt>
 <dd>
-<p>The coordinates of objects differ in Dobot arm&#8217;s and camera&#8217;s coordinate system. This tool instructs users to measure<br>
-the corresponding position of an object in both arm and camera coordinates, then, computes the affine transformation.</p>
+<p>由於同一個物件在機械手臂與鏡頭的座標系上會有所不同，我們也開發了一套工具程式來輔助使用者對物件的位置進行測量，
+並設計一套模型來匹配最合適的仿射轉換。</p>
 </dd>
-<dt class="hdlist1">Specially-designed Hardware</dt>
+<dt class="hdlist1">攝影機與手臂的一體結合</dt>
 <dd>
-<p>We design a support to fix the RealSense sensor on end-effector, which is made by laser-cut acrylic. It can be directly installed on Dobot without modification on Dobot and RealSense sensor.</p>
+<p>有別於以往需要多一個支架來架設第三人稱視角攝影機的設計，
+我們精巧地用雷切壓克力製作出一個支架將深度攝影機直接固定在手臂末端。
+同時為了能夠達到最佳的視野，我們也支援鏡頭在支架上面位置的細部微調。</p>
 </dd>
 </dl>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_achievements">Achievements</h2>
+<h2 id="_目前成果">目前成果</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Our robotic arm is able to achieve the following tasks.</p>
+<p>我們所設計的機械手臂目前可以完成以下的工作：</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Move the robot arm to the center of an object within 2 cm error.</p>
+<p>移動夾爪到物件中心點，誤差在2cm以內</p>
 </li>
 <li>
-<p>Estimate the height of the object up to 11 cm height using the depth sensor, and adjust the robot arm accordingly.</p>
+<p>使用深度攝影機來測量物件的高度，最高可達11cm，並根據測量的深度來適度調整機械手臂的夾取。</p>
 </li>
 <li>
-<p>Process up to 20 images per second, including object detection and depth estimation on Jetson Nano. The actual performance depends on system loading and hardware.</p>
+<p>目前在Jetson Nano上面已經可以做到每秒即時處理20張影像，包含物件偵測與深度估計。
+注意不同的控制板可能會表現有所不同，實際上的表現仍取決於系統負載與硬體效能。</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_usage">Usage</h2>
+<h2 id="_如何使用">如何使用</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The core controller requires correct parameters to reliably perform object detection and robot arm movement.
-It&#8217;s necessary to go through a series parameter tweaking process before we invoke the controller.
-The procedure goes as the following.</p>
+<p>由於核心的控制程式需要針對不同物件有適當的參數才可以進行精準的物件偵測與手臂夾取，
+我們設計了一系列的工具程式來輔助使用者來做參數微調。其概要如下：</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Tune the object detector. Tweak the parameters until it can accurately estimate the object position.</p>
+<p>執行物件偵測調參，調整參數直到可以獲得正確的物件辨識。</p>
 </li>
 <li>
-<p>Tune the coordinate transformation between the camera and the robot. It measures the affine transformation matrix that converts objects in image coordinates to robot coordinates.</p>
+<p>測量影像座標到機器人座標的轉換，我們將訓練一個模型來造出最合適的座標轉換。</p>
 </li>
 <li>
-<p>Save all previously measured parameters from previous steps.</p>
+<p>儲存所有的測量參數。</p>
 </li>
 <li>
-<p>Load the parameters from previous step and start the core controller.</p>
+<p>將微調後的參數讀進主程式中。</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>For the details of usage, please refer to <a href="https://jerry73204.github.io/hacky-arm/calibration.html">here</a>.</p>
+<p>詳細的操作與說明可以參考<a href="https://jerry73204.github.io/hacky-arm/calibration-ch.html">這裡</a>。</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_technical_details">Technical Details</h2>
+<h2 id="_技術細節">技術細節</h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="_the_program_architecture">The Program Architecture</h3>
+<h3 id="_程式架構">程式架構</h3>
 <div class="paragraph">
-<p>Our program copes with several I/O and computing devices simultaneously.
-For example, it scans video and depth images from the RealSense sensor,
-prints status to the terminal, handles user key input, sends commands to Dobot,
-and executes computation-heavy object detection and visualizations.
-Each device goes at its pace, and thus, the synchronization between them was a challenge to us.
-We developed an asynchronous multi-worker architecture.
-The <a href="#the-program-architecture">figure</a> below illustrates the overall architecture of our program.</p>
+<p>我們的程式會同時處理各種的I/O與計算。舉例來說，從使用RealSense攝影機獲取彩色影像與深度影像，
+再到印出資訊到終端，並處理使用者的鍵盤數入，送出控制訊息給機械手臂，以及執行一系列需要繁重計算
+的物件偵測與視覺化。由於每一個裝置都有各自的流程，在兼顧效能下去處理各元件間訊息的同步是非常
+具挑戰性的嘗試，而這也是我們選擇Rust語言的原因。以下是我們所設計的異同步多工的架構圖。</p>
 </div>
 <div id="the-program-architecture" class="imageblock">
 <div class="content">
@@ -553,88 +551,84 @@ The <a href="#the-program-architecture">figure</a> below illustrates the overall
 <div class="title">Figure 1. The Program Architecture</div>
 </div>
 <div class="paragraph">
-<p>Our architecture features several spotlights.</p>
+<p>以上的架構有幾個亮點列舉如下：</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>We work with <a href="https://www.rust-lang.org/">Rust language</a> to build our program.
-Rust provides type safety to help us eliminate data racing among threads, and
-help us and avoid unsafe memory operations such as accessing destructed objects and invalid locations.
-We thus can build the framework with solid safety and with confidence.</p>
+<p>我們主要使用<a href="https://www.rust-lang.org/">Rust</a>語言來開發我們的程式。Rust提供了型別安全性使得我們得以
+更好的開發多線程程式而不用擔心資料爭用的問題。此外，也幫助開發者可以避免危險的記憶體操作如使用已註銷的物件或
+不合法的記憶體位置。</p>
 </li>
 <li>
-<p>We adopted the <a href="https://github.com/tokio-rs/tokio">tokio</a> asynchronous runtime.
-It provides various kinds of channels to help us connect multiple workers together.
-We use lossy broadcast channel among all workers from the RealSense consemr to the visualizer.
-It ensures the input images are shown on screen in real-time.</p>
+<p>我們使用tokio套件來作為異同步程式的框架，它提供了各種不同的通道來讓我們連接多個工作者(Worker)。
+而我們使用有損(lossy)的廣播通道在各個RealSense與視覺化工作間的工作者間傳遞訊息。這使得剛輸入的影像可以被即時地呈現在畫面上。</p>
 </li>
 <li>
-<p>We put lots of consideration on the interaction between the visualizer and the controller.
-The visualizer receives user commands and send to the controller. Commands should be processed soon for responsiveness.
-However, the Dobot worker would be busy grabbing an object. The controller would wait for the Dobot for a long time.
-while the user command would wait for a long time to be processed. It would confuse the user and should be prevented.
-We borrow a lossy channel from tokio, where each command is marked with a TTL. It ensures the controller always process
-the most recent command for better responsiveness.</p>
+<p>我們花了很多的心力在設計畫圖工作(Visualizer)與控制器(Controller)之間的互動。
+Visualizer首先會接收使用者的指令，並即地處理後傳送給Controller。然而，對於Dobot的工作而言，夾取物件是一件需要時間完成的工作，
+所以Controller必須等待一段時間後才能完成夾取的動作。為了同時兼顧使用者的控制，程式會暫時關掉使用者的控制。我們使用tokio
+提供的通道來設計說每一個命令都有標記TTL(time-to-live)，這使得控制器隨時都會處理最新的命令，因而做到即時的反應。</p>
 </li>
 <li>
-<p>Our program has an <em>automatic mode</em>, in which our program seek for objects, move them to another place, and repeat to move them back.
-The user can enable or disable auto mode, and call Dobot to calibrate itself during the auto mode. In the meantime, the visualizer
-presents the state of the controller. To achieve this, we build a shared state watched by the controller and the visualizer.
-Whenever the state is changed, such as if the Dobot is busy or not, the visualizer is notified and updates the visualization accordingly.</p>
+<p>我們的程式也實做了_自動模式_，機械人會自動搜尋物體，並將各個辨識到的物件夾取到令一個指定的地點，直到所有的東西都搬過去另外一邊，
+便會改變方向，將另外一邊的物件再次搬回來。使用者可以啟用或關閉這個模式，或者是叫機器人執行校正手臂的動作。在所有動作的同時，
+Visualizer會隨時在螢幕上顯示控制的資訊。這類的功能主要是透過在Visualizer跟Controller構造一個共享狀態的訊息，並且只要狀態被改變的話，
+例如：當機械手臂正忙於執行夾取時，Visualizer就會根據其狀況來更新資訊。</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_object_detection_process">Object Detection Process</h3>
+<h3 id="_物件偵測">物件偵測</h3>
 <div class="paragraph">
-<p>The object detection relies on OpenCV primitives. The main stages are</p>
+<p>我們實做的物件偵測主要是基於OpenCV函式庫，其主要的演算法構造如下：</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>HSV thresholding</strong>: Namely, filter pixels by color brightness and saturation.</p>
+<p><strong>HSV thresholding</strong>: 先將RGB彩色圖像轉換成HSV的表示，並加一個遮罩來做閾值化。
+其遮罩主要是透過限制色域、亮度和飽和度。</p>
 </li>
 <li>
-<p><strong>Morphology transformations</strong>: It effectively reduces the noise points.</p>
+<p><strong>Morphology transformations</strong>: 使用一些形態轉換來有效去除影像中的雜訊或破碎的部份。</p>
 </li>
 <li>
-<p><strong>Contour detection</strong>: It finds components of connected pixels as objects.</p>
+<p><strong>Contour detection</strong>: 使用輪廓偵測來判定那些相連通得物件為欲辨識的物體。</p>
 </li>
 <li>
-<p><strong>Reject bad contours</strong>: It removes objects out of range of interest and those with a small area.</p>
+<p><strong>Reject bad contours</strong>: 為了達到更精準的辨識結果，我們還額外使用了ROI(region of interest)來限制辨識範圍及
+最大最小的物件週長來限制可能的辨識物件。</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>The resulting recall is affected by the ambient light and the texture of objects.
-It&#8217;s suggested to run the object detection tweaking tool to find the proper parameters.</p>
+<p>注意到物件辨識會受到環境光以及物體表面紋理的影像，我們建議最好參照上述關於使用輔助程式來微調參數的說明，以達到最佳的辨識結果。</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_object_depth_estimation">Object Depth Estimation</h3>
+<h3 id="_測量物件深度">測量物件深度</h3>
 <div class="paragraph">
-<p>The depth estimation is mainly done in these steps.</p>
+<p>關於如何準確測量到一個物體的深度可以細分成如下：</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>First, we call the object detector to locate objects on images.</p>
+<p>呼叫物件辨識來找尋一張彩色影像中可能的物件位置。</p>
 </li>
 <li>
-<p>Then, for each object, find the corresponding depth pixels in the depth image.</p>
+<p>接下來，對於每一個物件去找尋相匹配的深度影像。</p>
 </li>
 <li>
-<p>Compute the depth for that object from collected depth pixels.</p>
+<p>根據找到那幾個像素點上面的深度來去計算，最後獲得準確的物件深度。</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>It is somewhat a complex job because the depth and color images are captured at distinct aspects, and their actual
-time would slightly differ. Thanks to <a href="https://github.com/IntelRealSense/librealsense">librealsense</a>, it has all essential tools
-to help us align the color and depth images. To integrate the library with our architecture, we developed
-the Rust binding for librealsense and make it public on <a href="https://github.com/jerry73204/realsense-rust">GitHub</a>.</p>
+<p>實務上，準確的測量物件深度是一件不簡單的事情，因為深度影像與彩色影像實際上是由不同的鏡頭角度所獲得，
+且在處理上各幀影像的時間點有可能是不一樣的，得做對應的配對。對此，我們基於<a href="https://github.com/IntelRealSense/librealsense">librealsense</a>
+函式庫（其上已經有具備必要的套件來對齊深度與彩色影像）來開發一個Rust版的RealSense函式庫。
+本函式庫已開源<a href="https://github.com/jerry73204/realsense-rust">於此</a>。</p>
 </div>
 </div>
 </div>
@@ -642,7 +636,7 @@ the Rust binding for librealsense and make it public on <a href="https://github.
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-05-05 12:30:32 +0800
+Last updated 2020-05-05 15:42:29 +0800
 </div>
 </div>
 <script type="text/x-mathjax-config">

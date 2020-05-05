@@ -3,35 +3,35 @@
 :data-uri:
 == Overview
 
-The project aims to unleash the power of Dobot Magician arm with Intel RealSense D435 depth sensor.
-With our specially designed algorithm, the robot arm is able to grab the object without human intervention,
+The project aims to unleash the power of the Dobot Magician arm with the Intel RealSense D435 depth sensor.
+With our specially designed algorithm, the robot arm is able to grab the object without human intervention
 and judge the depth image from RealSensoe sensor to adjust the pose.
 
-Our project deliver the following items:
+Our project delivers the following items:
 
 Core Controller::
-The program scans the video and depth video in real time. It allows user to issue commands to grab objects either manually or automatically. +
-It features *real-time object detection*, *object depth estimation* and *point cloud visualization*. +
+The program scans the video and depth video in real-time. It allows users to issue commands to grab objects either manually or automatically. +
+It features *real-time object detection*, *object depth estimation*, and *point cloud visualization*. +
 It is highly configurable. Users can tweak the parameters for object detection and robot controller.
 
 Object Detector Tweaking Tool::
-Since the core controller relies on image processing to determine the position of object. +
-The utility program lets users to tweak the parameters, and preview the detection performance interactively. +
+Since the core controller relies on image processing to determine the position of the object. +
+The utility program lets users tweak the parameters, and preview the detection performance interactively. +
 The output parameters can be directly loaded by the core controller.
 
 Camera to Robot Measurement Tool::
 The coordinates of objects differ in Dobot arm's and camera's coordinate system. This tool instructs users to measure +
-the corresponding position of a object in both arm and camera coordinates, then, computes the affine transformation.
+the corresponding position of an object in both arm and camera coordinates, then, computes the affine transformation.
 
 Specially-designed Hardware::
-We design a support to fix the RealSense sensor on end-effector. It can be 3D-printed. It can be directly installed on Dobot without modification on Dobot and RealSense sensor.
+We design a support to fix the RealSense sensor on end-effector, which is made by laser-cut acrylic. It can be directly installed on Dobot without modification on Dobot and RealSense sensor.
 
 == Achievements
 
-Our robot arm is able to achive the following tasks.
+Our robotic arm is able to achieve the following tasks.
 
-- Move the robot arm to the center of object within 2 cm error.
-- Estimate the height of object up to 11 cm height using depth sensor, and adjust the robot arm accordingly.
+- Move the robot arm to the center of an object within 2 cm error.
+- Estimate the height of the object up to 11 cm height using the depth sensor, and adjust the robot arm accordingly.
 - Process up to 20 images per second, including object detection and depth estimation on Jetson Nano. The actual performance depends on system loading and hardware.
 
 == Usage
@@ -40,20 +40,23 @@ The core controller requires correct parameters to reliably perform object detec
 It's necessary to go through a series parameter tweaking process before we invoke the controller.
 The procedure goes as the following.
 
-1. Run the object detector tweaking tool. Tweak the parameters until it can accurately estimate the object position.
-2. Run the camera to robot measurement tool. It measures the affine transformation matrix that converts objects in image coordinates to robot coordinates.
-3. Save all previous measured parameters from previous steps.
+1. Tune the object detector. Tweak the parameters until it can accurately estimate the object position.
+2. Tune the coordinate transformation between the camera and the robot. It measures the affine transformation matrix that converts objects in image coordinates to robot coordinates.
+3. Save all previously measured parameters from previous steps.
 4. Load the parameters from previous step and start the core controller.
 
 For the details of usage, please refer to https://jerry73204.github.io/hacky-arm/calibration.html[here].
 
-== Techninal Details
+== Technical Details
 
 === The Program Architecture
 
-Our program copes with several I/O and computing devices simultaneously. For example, it scans video and depth images from the RealSense sensor,
-prints status to terminal, handles user key input, sends commands to Dobot, and executes computation-heavy object detection and visualizations.
-Each device goes at its pace, and thus, the synchronization between them was a challenge to us. We developed a asynchronous multi-worker architecture.
+Our program copes with several I/O and computing devices simultaneously.
+For example, it scans video and depth images from the RealSense sensor,
+prints status to the terminal, handles user key input, sends commands to Dobot,
+and executes computation-heavy object detection and visualizations.
+Each device goes at its pace, and thus, the synchronization between them was a challenge to us.
+We developed an asynchronous multi-worker architecture.
 The <<the-program-architecture, figure>> below illustrates the overall architecture of our program.
 
 [#the-program-architecture]
@@ -115,23 +118,23 @@ Our architecture features several spotlights.
 
 - We work with link:https://www.rust-lang.org/[Rust language] to build our program.
 Rust provides type safety to help us eliminate data racing among threads, and
-help us and avoid unsafe memory operations such as accessing destructed object and invalid location.
+help us and avoid unsafe memory operations such as accessing destructed objects and invalid locations.
 We thus can build the framework with solid safety and with confidence.
 
 - We adopted the link:https://github.com/tokio-rs/tokio[tokio] asynchronous runtime.
 It provides various kinds of channels to help us connect multiple workers together.
-We use lossy broadcast channel among all workers from RealSense consuemr to visualizer.
-It ensures the input images are shown on screen in real time.
+We use lossy broadcast channel among all workers from the RealSense consemr to the visualizer.
+It ensures the input images are shown on screen in real-time.
 
-- We put lots of consideration on interaction between the visualizer and the controller.
+- We put lots of consideration on the interaction between the visualizer and the controller.
 The visualizer receives user commands and send to the controller. Commands should be processed soon for responsiveness.
 However, the Dobot worker would be busy grabbing an object. The controller would wait for the Dobot for a long time.
 while the user command would wait for a long time to be processed. It would confuse the user and should be prevented.
 We borrow a lossy channel from tokio, where each command is marked with a TTL. It ensures the controller always process
 the most recent command for better responsiveness.
 
-- Our program has a _automatic mode_, in which our program seek for objects, move them to another place, and repeat to move them back.
-The user can enable or disable auto mode, and call Dobot to calibrate itself during auto mode. In the mean time, the visualizer
+- Our program has an _automatic mode_, in which our program seek for objects, move them to another place, and repeat to move them back.
+The user can enable or disable auto mode, and call Dobot to calibrate itself during the auto mode. In the meantime, the visualizer
 presents the state of the controller. To achieve this, we build a shared state watched by the controller and the visualizer.
 Whenever the state is changed, such as if the Dobot is busy or not, the visualizer is notified and updates the visualization accordingly.
 
@@ -139,24 +142,24 @@ Whenever the state is changed, such as if the Dobot is busy or not, the visualiz
 
 The object detection relies on OpenCV primitives. The main stages are
 
-1. *HSV thresholding*: Namely, filter pixels by color brightness and satuation.
-2. *Morphology transformations*: It effectively reduce the noise points.
-3. *Contour detection*: It find components of connected pixels as objects.
-4. *Reject bad contours*: It removes objects out of range of interest and those with small area.
+1. *HSV thresholding*: Namely, filter pixels by color brightness and saturation.
+2. *Morphology transformations*: It effectively reduces the noise points.
+3. *Contour detection*: It finds components of connected pixels as objects.
+4. *Reject bad contours*: It removes objects out of range of interest and those with a small area.
 
-The resulting recall is affected by the ambient light and the texture of object. It's suggested to run the object detection tweaking tool to find the proper parameters.
+The resulting recall is affected by the ambient light and the texture of objects.
+It's suggested to run the object detection tweaking tool to find the proper parameters.
 
 === Object Depth Estimation
-
 
 
 The depth estimation is mainly done in these steps.
 
 1. First, we call the object detector to locate objects on images.
-2. Then, for each object, find the corresponding depth pixels in depth image.
+2. Then, for each object, find the corresponding depth pixels in the depth image.
 3. Compute the depth for that object from collected depth pixels.
 
-It is somewhat a complex job because the depth and color image are captured at distinct aspect, and their actual
+It is somewhat a complex job because the depth and color images are captured at distinct aspects, and their actual
 time would slightly differ. Thanks to link:https://github.com/IntelRealSense/librealsense[librealsense], it has all essential tools
 to help us align the color and depth images. To integrate the library with our architecture, we developed
 the Rust binding for librealsense and make it public on link:https://github.com/jerry73204/realsense-rust[GitHub].

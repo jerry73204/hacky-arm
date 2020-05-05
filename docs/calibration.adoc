@@ -44,11 +44,10 @@ After calibrated, press kbd:[h] can make the robotic arm go back to its origin
 [NOTE]
 To keep the calibration correct,
 always remember to reset the robotic arm(press kbd:[h] to go home)
-if the camera's position has been accidentally changed,
-.
+if the camera's position has been accidentally changed.
 
 
-=== Step 3: Tune the object detection
+=== Step 3. Tune the object detection
 
 
 The program will display two windows, the left one is for object detection and the right one is for
