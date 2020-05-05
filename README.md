@@ -63,8 +63,10 @@ Sensor: Intel RealSense D435
 
 ## Documentation
 
-* User manual: \[[English](https://jerry73204.github.io/hacky-arm/manual.html)\], \[中文\](TBA)
-* Calibration: \[[English](https://jerry73204.github.io/hacky-arm/calibration.html)\], \[中文\](TBA)
+* User manual: \[[English](https://jerry73204.github.io/hacky-arm/manual.html)\],
+    \[[中文](https://jerry73204.github.io/hacky-arm/manual-ch.html)\]
+* Calibration: \[[English](https://jerry73204.github.io/hacky-arm/calibration.html)\],
+    \[[中文](https://jerry73204.github.io/hacky-arm/calibration-ch.html)\]
 
 
 ## Todos
